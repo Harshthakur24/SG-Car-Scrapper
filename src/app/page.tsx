@@ -1,48 +1,245 @@
 'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Header from '@/components/Header';
 import { FileUpload } from "@/components/file-upload";
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
+import { Toaster, toast } from 'react-hot-toast';
 
 export default function FormPage() {
   const [emailInput, setEmailInput] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isRcLost, setIsRcLost] = useState<boolean | null>(null);
   const [isHypothecationCleared, setIsHypothecationCleared] = useState<boolean | null>(null);
+  const [vahanLink, setVahanLink] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [files, setFiles] = useState<{ [key: string]: File | null }>({
+    adharCard: null,
+    panCard: null,
+    registrationCertificate: null,
+    cancelledCheck: null,
+    challanSeizureMemo: null,
+    deathCertificate: null,
+    hypothecationClearanceDoc: null
+  });
+  const fileInputsRef = useRef<{
+    adharCard: HTMLInputElement | null;
+    panCard: HTMLInputElement | null;
+    registrationCertificate: HTMLInputElement | null;
+    deathCertificate: HTMLInputElement | null;
+    cancelledCheck: HTMLInputElement | null;
+    challanSeizureMemo: HTMLInputElement | null;
+    hypothecationClearanceDoc: HTMLInputElement | null;
+  }>({
+    adharCard: null,
+    panCard: null,
+    registrationCertificate: null,
+    deathCertificate: null,
+    cancelledCheck: null,
+    challanSeizureMemo: null,
+    hypothecationClearanceDoc: null,
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const newErrors: { [key: string]: string } = {};
 
-    // Custom validation
-    if (!formData.get('name')) {
-      newErrors.name = 'Name is required';
-    }
-
-    if (!formData.get('phone') || !/^[0-9]{10}$/.test(formData.get('phone') as string)) {
-      newErrors.phone = 'Valid phone number is required';
-    }
-
-    if (!emailInput || !emailInput.includes('@')) {
-      newErrors.email = 'Valid email is required';
-    }
-
-    // Set errors or submit
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (!validateForm()) {
       return;
     }
 
-    // Process form submission
-    console.log('Form submitted', formData);
+    setIsSubmitting(true);
+    const loadingToast = toast.loading('Submitting documents...');
+
+    try {
+      const form = e.currentTarget;
+
+      // Check required fields
+      const requiredFields = ['name', 'phoneNumber', 'email', 'vahanRegistrationLink'];
+      const requiredFileLabels = {
+        adharCard: 'Aadhar Card',
+        panCard: 'PAN Card',
+        registrationCertificate: 'Registration Certificate',
+        cancelledCheck: 'Cancelled Check',
+        challanSeizureMemo: 'Challan Seizure Memo'
+      };
+
+      // Check if required fields are filled
+      const missingFields = requiredFields.filter(field => {
+        const element = form.elements.namedItem(field) as HTMLInputElement;
+        return !element?.value;
+      });
+
+      // Check if required files are uploaded
+      const missingFiles = Object.entries(requiredFileLabels)
+        .filter(([key]) => !files[key])
+        .map(([, label]) => label);
+
+      // Show error toast if anything is missing
+      if (missingFields.length > 0 || missingFiles.length > 0) {
+        setIsSubmitting(false);
+        let message = '';
+
+        if (missingFields.length > 0) {
+          message += 'Please fill: ' + missingFields.join(', ');
+        }
+
+        if (missingFiles.length > 0) {
+          if (message) message += ' and ';
+          message += 'Please upload: ' + missingFiles.join(', ');
+        }
+
+        toast.error(message, {
+          duration: 5000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            minWidth: '300px',
+            padding: '16px',
+          }
+        });
+        return;
+      }
+
+      const formData = new FormData();
+
+      // Add text fields
+      formData.append('name', (form.elements.namedItem('name') as HTMLInputElement).value);
+      formData.append('email', (form.elements.namedItem('email') as HTMLInputElement).value);
+      formData.append('phoneNumber', (form.elements.namedItem('phoneNumber') as HTMLInputElement).value);
+      formData.append('vahanRegistrationLink', vahanLink);
+      formData.append('isRcLost', isRcLost ? 'true' : 'false');
+      formData.append('isHypothecated', isHypothecationCleared ? 'true' : 'false');
+
+      // Add required files
+      if (files.adharCard) formData.append('adharCard', files.adharCard);
+      if (files.panCard) formData.append('panCard', files.panCard);
+      if (files.registrationCertificate) formData.append('registrationCertificate', files.registrationCertificate);
+      if (files.cancelledCheck) formData.append('cancelledCheck', files.cancelledCheck);
+      if (files.challanSeizureMemo) formData.append('challanSeizureMemo', files.challanSeizureMemo);
+
+      // Add optional files
+      if (files.deathCertificate) formData.append('deathCertificate', files.deathCertificate);
+      if (files.hypothecationClearanceDoc) formData.append('hypothecationClearanceDoc', files.hypothecationClearanceDoc);
+
+      // Add RC lost declaration if needed
+      if (isRcLost && form.elements.namedItem('rcLostDeclaration')) {
+        formData.append('rcLostDeclaration', (form.elements.namedItem('rcLostDeclaration') as HTMLInputElement).value);
+      }
+
+      const response = await fetch('/api/submit-documents', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.dismiss(loadingToast);
+        toast.error(data.error || 'Something went wrong');
+        throw new Error(data.error || 'Something went wrong');
+      }
+
+      toast.dismiss(loadingToast);
+      toast.success('Documents submitted successfully!');
+
+      // Reset form and state
+      form.reset();
+      setEmailInput('');
+      setVahanLink('');
+      setIsRcLost(null);
+      setIsHypothecationCleared(null);
+      setErrors({});
+      setFiles({});
+
+      // Clear file inputs
+      Object.values(fileInputsRef.current).forEach(input => {
+        if (input) {
+          input.value = '';
+        }
+      });
+
+    } catch (error) {
+      console.error('Submission error:', error);
+      toast.error('Failed to submit documents. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const validateForm = () => {
+    const requiredFileLabels = {
+      adharCard: 'Aadhar Card',
+      panCard: 'PAN Card',
+      registrationCertificate: 'Registration Certificate',
+      cancelledCheck: 'Cancelled Check',
+      challanSeizureMemo: 'Challan Seizure Memo'
+    };
+
+    const missingFiles = Object.entries(requiredFileLabels)
+      .filter(([key]) => !files[key])
+      .map(([, label]) => label);
+
+    if (missingFiles.length > 0) {
+      // Show individual toasts for each missing document
+      missingFiles.forEach(doc => {
+        toast.error(`Please upload ${doc}`, {
+          duration: 3000,
+          position: 'top-center',
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+          },
+        });
+      });
+      return false;
+    }
+
+    // Check hypothecation doc if needed
+    if (isHypothecationCleared === true && !files.hypothecationClearanceDoc) {
+      toast.error('Please upload Hypothecation Clearance Document', {
+        duration: 3000,
+        position: 'top-center',
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '16px',
+        },
+      });
+      return false;
+    }
+
+    return true;
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 5000,
+          style: {
+            background: '#fff',
+            color: '#363636',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            borderRadius: '0.5rem',
+            padding: '1rem',
+          },
+          success: {
+            iconTheme: {
+              primary: '#22C55E',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+
       <Header />
 
       <div className="max-w-5xl mx-auto px-4 py-6">
@@ -74,6 +271,7 @@ export default function FormPage() {
                     <input
                       type="text"
                       name="name"
+                      required
                       className={cn(
                         "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
                         errors.name
@@ -97,6 +295,7 @@ export default function FormPage() {
                       </span>
                       <input
                         type="tel"
+                        name="phoneNumber"
                         pattern="[0-9]{10}"
                         maxLength={10}
                         onKeyPress={(e) => {
@@ -117,8 +316,9 @@ export default function FormPage() {
                     </label>
                     <div className="relative">
                       <input
-                        type="text"
+                        type="email"
                         name="email"
+                        required
                         className={cn(
                           "w-6/12 px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
                           errors.email
@@ -130,45 +330,11 @@ export default function FormPage() {
                         onChange={(e) => {
                           setEmailInput(e.target.value);
                           setErrors({ ...errors, email: '' }); // Clear error on change
-                          const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
-                          if (dropdown) {
-                            dropdown.style.display = e.target.value ? 'block' : 'none';
-                          }
                         }}
                       />
                       {errors.email && (
                         <p className="mt-1 text-sm text-red-500">{errors.email}</p>
                       )}
-                      <div className="absolute mt-1 w-full hidden z-10">
-                        <div className="bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
-                          {['@gmail.com', '@yahoo.com', '@outlook.com']
-                            .filter(() => !emailInput.includes('@'))
-                            .map((domain) => (
-                              <button
-                                key={domain}
-                                type="button"
-                                className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors group"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  const fullEmail = emailInput + domain;
-                                  setEmailInput(fullEmail);
-                                  const dropdown = e.currentTarget.closest('div')?.parentElement as HTMLElement;
-                                  if (dropdown) {
-                                    dropdown.style.display = 'none';
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-gray-600 group-hover:text-blue-600 transition-colors">
-                                    {emailInput}
-                                    <span className="font-medium">{domain}</span>
-                                  </span>
-                                </div>
-                              </button>
-                            ))}
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -182,37 +348,79 @@ export default function FormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <FileUpload
                     label="Aadhar Card"
+                    name="adharCard"
                     required
-                    onChange={(file) => console.log('Aadhar file:', file)}
+                    ref={el => {
+                      fileInputsRef.current.adharCard = el;
+                    }}
+                    onChange={(file) => {
+                      const newFiles = { ...files, adharCard: file };
+                      setFiles(newFiles);
+                    }}
                   />
 
                   <FileUpload
                     label="PAN Card"
+                    name="panCard"
                     required
-                    onChange={(file) => console.log('PAN file:', file)}
+                    ref={el => {
+                      fileInputsRef.current.panCard = el;
+                    }}
+                    onChange={(file) => {
+                      const newFiles = { ...files, panCard: file };
+                      setFiles(newFiles);
+                    }}
                   />
 
                   <FileUpload
                     label="Registration Certificate"
+                    name="registrationCertificate"
                     required
-                    onChange={(file) => console.log('RC file:', file)}
+                    ref={el => {
+                      fileInputsRef.current.registrationCertificate = el;
+                    }}
+                    onChange={(file) => {
+                      const newFiles = { ...files, registrationCertificate: file };
+                      setFiles(newFiles);
+                    }}
                   />
 
                   <FileUpload
                     label="Death Certificate"
-                    onChange={(file) => console.log('Death Certificate:', file)}
+                    name="deathCertificate"
+                    ref={el => {
+                      fileInputsRef.current.deathCertificate = el;
+                    }}
+                    onChange={(file) => {
+                      const newFiles = { ...files, deathCertificate: file };
+                      setFiles(newFiles);
+                    }}
                   />
 
                   <FileUpload
                     label="Cancelled Check / Pass Book"
+                    name="cancelledCheck"
                     required
-                    onChange={(file) => console.log('Bank document:', file)}
+                    ref={el => {
+                      fileInputsRef.current.cancelledCheck = el;
+                    }}
+                    onChange={(file) => {
+                      const newFiles = { ...files, cancelledCheck: file };
+                      setFiles(newFiles);
+                    }}
                   />
 
                   <FileUpload
                     label="Challan Seizure Memo"
+                    name="challanSeizureMemo"
                     required
-                    onChange={(file) => console.log('Challan:', file)}
+                    ref={el => {
+                      fileInputsRef.current.challanSeizureMemo = el;
+                    }}
+                    onChange={(file) => {
+                      const newFiles = { ...files, challanSeizureMemo: file };
+                      setFiles(newFiles);
+                    }}
                   />
                 </div>
               </div>
@@ -249,8 +457,15 @@ export default function FormPage() {
                         >
                           <FileUpload
                             label="Hypothecation Clearance Document"
+                            name="hypothecationClearanceDoc"
                             required
-                            onChange={(file) => console.log('Hypothecation doc:', file)}
+                            ref={el => {
+                              fileInputsRef.current.hypothecationClearanceDoc = el;
+                            }}
+                            onChange={(file) => {
+                              const newFiles = { ...files, hypothecationClearanceDoc: file };
+                              setFiles(newFiles);
+                            }}
                           />
                         </motion.div>
                       )}
@@ -324,27 +539,65 @@ export default function FormPage() {
                     Required for document verification
                   </span>
                 </h3>
-                <a href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/login/login.xhtml"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 rounded-full text-blue-600 font-medium transition-all duration-300 transform hover:scale-[1.06]">
-                  Generate Link
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <motion.div
-                      animate={{
-                        scale: [1, 1.5, 1],
-                        opacity: [1, 0.6, 1],
-                        y: [0, -2, 0]
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                      className="w-2 h-2 rounded-full bg-blue-600"
-                    />
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  <a
+                    href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/login/login.xhtml"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 rounded-full text-blue-600 font-medium transition-all duration-300 transform hover:scale-[1.06]"
+                  >
+                    Generate Link
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.5, 1],
+                          opacity: [1, 0.6, 1],
+                          y: [0, -2, 0]
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                        className="w-2 h-2 rounded-full bg-blue-600"
+                      />
+                    </div>
+                  </a>
+                </div>
+              </div>
+
+              {/* New Registration Link Input Section */}
+              <div className="mt-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="p-4">
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Registration Link
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="url"
+                        name="vahanRegistrationLink"
+                        required
+                        value={vahanLink}
+                        onChange={(e) => setVahanLink(e.target.value)}
+                        placeholder="Paste your Vahan registration link here"
+                        className="w-full px-4 py-2.5 pr-10 rounded-lg border bg-white text-gray-900 transition-all
+                          border-gray-300 hover:border-blue-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                      />
+                      {vahanLink && (
+                        <button
+                          type="button"
+                          onClick={() => setVahanLink('')}
+                          className="absolute right-3 p-1 rounded-full hover:bg-gray-100"
+                        >
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </a>
+                </div>
               </div>
 
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
@@ -365,9 +618,19 @@ export default function FormPage() {
               <div className="pt-4 flex justify-center">
                 <button
                   type="submit"
-                  className="w-full md:w-4/12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-lg font-semibold py-4 px-8 rounded-full hover:from-blue-700 hover:to-indigo-700 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 transform hover:scale-[1.06] hover:shadow-2xl shadow-lg"
+                  onClick={(e) => {
+                    if (!validateForm()) {
+                      e.preventDefault();
+                      return;
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  className={`w-full md:w-4/12 bg-gradient-to-r ${isSubmitting
+                    ? 'from-gray-400 to-gray-500 cursor-not-allowed'
+                    : 'from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                    } text-white text-lg font-semibold py-4 px-8 rounded-full focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 transform hover:scale-[1.06] hover:shadow-2xl shadow-lg`}
                 >
-                  Submit Documents
+                  {isSubmitting ? 'Submitting...' : 'Submit Documents'}
                 </button>
               </div>
             </form>

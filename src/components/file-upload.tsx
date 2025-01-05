@@ -1,23 +1,21 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from "@/lib/utils";
 
-interface FileUploadProps {
-    label: string;
-    required?: boolean;
-    onChange: (file: File | null) => void;
-}
-
-export function FileUpload({ label, required = false, onChange }: FileUploadProps) {
+export const FileUpload = forwardRef<
+    HTMLInputElement,
+    {
+        label: string;
+        name: string;
+        required?: boolean;
+        onChange: (file: File | null) => void;
+    }
+>(({ label, name, required = false, onChange }, ref) => {
     const [file, setFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0] || null;
-        setFile(selectedFile);
-        onChange(selectedFile);
-    };
+    useImperativeHandle(ref, () => fileInputRef.current!);
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
@@ -39,7 +37,11 @@ export function FileUpload({ label, required = false, onChange }: FileUploadProp
     };
 
     const handleRemoveFile = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
         setFile(null);
         onChange(null);
     };
@@ -96,11 +98,18 @@ export function FileUpload({ label, required = false, onChange }: FileUploadProp
                 )}
             >
                 <input
-                    type="file"
                     ref={fileInputRef}
+                    type="file"
+                    name={name}
+                    required={required}
                     className="hidden"
-                    onChange={handleFileChange}
                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                        const selectedFile = e.target.files?.[0] || null;
+                        setFile(selectedFile);
+                        onChange(selectedFile);
+                    }}
                 />
 
                 <AnimatePresence mode="wait">
@@ -182,4 +191,6 @@ export function FileUpload({ label, required = false, onChange }: FileUploadProp
             </motion.div>
         </motion.div>
     );
-} 
+});
+
+FileUpload.displayName = 'FileUpload'; 
