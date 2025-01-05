@@ -53,7 +53,7 @@ export default function FormPage() {
             <div className="mb-8">
               <h2 className="text-3xl md:text-4xl text-gray-900 font-bold text-center">
                 Required Documents
-                <span className="block mt-4 text-lg md:text-xl font-normal text-gray-500 tracking-wide">
+                <span className="block mt-3 text-lg md:text-xl font-normal text-gray-500 tracking-wide">
                   For Vehicle Scrap Value Claim
                 </span>
               </h2>
@@ -226,11 +226,17 @@ export default function FormPage() {
                       </svg>
                     </div>
                     <div className="space-y-4 w-full">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-base font-semibold text-gray-900">Is your vehicle&apos;s hypothecation cleared?</h4>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+                        <h4 className="text-base font-semibold text-gray-900 mb-3 sm:mb-0">Is your vehicle&apos;s hypothecation cleared?</h4>
                         <div className="flex items-center gap-3">
-                          <button type="button" onClick={() => setIsHypothecationCleared(true)} className={`px-4 py-2 rounded-full text-sm font-medium ${isHypothecationCleared ? 'bg-amber-600 text-white' : 'bg-white border text-gray-600'}`}>Yes</button>
-                          <button type="button" onClick={() => setIsHypothecationCleared(false)} className={`px-4 py-2 rounded-full text-sm font-medium ${isHypothecationCleared === false ? 'bg-gray-600 text-white' : 'bg-white border text-gray-600'}`}>No</button>
+                          <button type="button" onClick={() => setIsHypothecationCleared(true)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium ${isHypothecationCleared ? 'bg-amber-600 text-white' : 'bg-white border text-gray-600'}`}>
+                            Yes
+                          </button>
+                          <button type="button" onClick={() => setIsHypothecationCleared(false)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium ${isHypothecationCleared === false ? 'bg-gray-600 text-white' : 'bg-white border text-gray-600'}`}>
+                            No
+                          </button>
                         </div>
                       </div>
 
@@ -261,27 +267,15 @@ export default function FormPage() {
                       </svg>
                     </div>
                     <div className="space-y-4 w-full">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-base font-semibold text-gray-900">Is your Registration Certificate (RC) Lost?</h4>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+                        <h4 className="text-base font-semibold text-gray-900 mb-3 sm:mb-0">Is your Registration Certificate (RC) Lost?</h4>
                         <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setIsRcLost(true)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isRcLost
-                              ? 'bg-rose-600 text-white'
-                              : 'bg-white border border-gray-300 text-gray-600 hover:border-rose-300'
-                              }`}
-                          >
+                          <button type="button" onClick={() => setIsRcLost(true)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isRcLost ? 'bg-rose-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-rose-300'}`}>
                             Yes
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsRcLost(false)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isRcLost === false
-                              ? 'bg-gray-600 text-white'
-                              : 'bg-white border border-gray-300 text-gray-600 hover:border-gray-400'
-                              }`}
-                          >
+                          <button type="button" onClick={() => setIsRcLost(false)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isRcLost === false ? 'bg-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-gray-400'}`}>
                             No
                           </button>
                         </div>
@@ -301,7 +295,7 @@ export default function FormPage() {
                           <div className="mt-2">
                             <textarea
                               name="rcLostDeclaration"
-                              rows={3}
+                              rows={6}
                               className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-rose-200 focus:border-rose-500 transition-all"
                               placeholder="I hereby declare that my vehicle's RC with registration number [ENTER NUMBER] has been lost. I take full responsibility for any misuse of the lost RC."
                             />
@@ -323,51 +317,47 @@ export default function FormPage() {
                 </div>
               </div>
 
-              <div className="space-y-6 border-t border-gray-100 pt-8">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    Generate Vahan Registration Link
-                    <span className="block mt-1 text-sm font-normal text-gray-500">
-                      Required for document verification
-                    </span>
-                  </h3>
-                  <a
-                    href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/login/login.xhtml"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 rounded-full text-blue-600 font-medium transition-all duration-300 transform hover:scale-[1.06]"
-                  >
-                    Generate Link
-                    <div className="flex items-center gap-1.5">
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [1, 0.6, 1],
-                          y: [0, -2, 0]
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                        className="w-2 h-2 rounded-full bg-blue-600"
-                      />
-                    </div>
-                  </a>
-                </div>
+              <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Generate Vahan Registration Link
+                  <span className="block mt-1 text-sm font-normal text-gray-500">
+                    Required for document verification
+                  </span>
+                </h3>
+                <a href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/login/login.xhtml"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 rounded-full text-blue-600 font-medium transition-all duration-300 transform hover:scale-[1.06]">
+                  Generate Link
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.5, 1],
+                        opacity: [1, 0.6, 1],
+                        y: [0, -2, 0]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      className="w-2 h-2 rounded-full bg-blue-600"
+                    />
+                  </div>
+                </a>
+              </div>
 
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        Please generate your Vahan registration link before submitting the documents. This link will be used to verify your vehicle registration details.
-                      </p>
-                    </div>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      Please generate your Vahan registration link before submitting the documents. This link will be used to verify your vehicle registration details.
+                    </p>
                   </div>
                 </div>
               </div>
