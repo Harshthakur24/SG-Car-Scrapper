@@ -6,26 +6,14 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const uploadToCloudinary = async (file: File): Promise<string> => {
+export const uploadToCloudinary = async (base64String: string | null): Promise<string | null> => {
+  if (!base64String) return null;
+  
   try {
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    return new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          resource_type: "auto",
-          folder: "user-documents",
-        },
-        (error, result) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve(result?.secure_url || '');
-        }
-      ).end(buffer);
+    const result = await cloudinary.uploader.upload(base64String, {
+      resource_type: 'auto',
     });
+    return result.secure_url;
   } catch (error) {
     console.error('Error uploading to Cloudinary:', error);
     throw error;

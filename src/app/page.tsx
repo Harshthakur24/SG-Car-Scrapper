@@ -5,6 +5,7 @@ import { FileUpload } from "@/components/file-upload";
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
 export default function FormPage() {
   const [emailInput, setEmailInput] = useState('');
@@ -39,135 +40,109 @@ export default function FormPage() {
     challanSeizureMemo: null,
     hypothecationClearanceDoc: null,
   });
+  const router = useRouter();
+
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
 
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    const loadingToast = toast.loading('Submitting documents...');
+    const loadingToast = toast.loading('Sending verification code...');
 
     try {
-      const form = e.currentTarget;
-
-      // Check required fields
-      const requiredFields = ['name', 'phoneNumber', 'email', 'vahanRegistrationLink'];
-      const requiredFileLabels = {
-        adharCard: 'Aadhar Card',
-        panCard: 'PAN Card',
-        registrationCertificate: 'Registration Certificate',
-        cancelledCheck: 'Cancelled Check',
-        challanSeizureMemo: 'Challan Seizure Memo'
-      };
-
-      // Check if required fields are filled
-      const missingFields = requiredFields.filter(field => {
-        const element = form.elements.namedItem(field) as HTMLInputElement;
-        return !element?.value;
-      });
-
-      // Check if required files are uploaded
-      const missingFiles = Object.entries(requiredFileLabels)
-        .filter(([key]) => !files[key])
-        .map(([, label]) => label);
-
-      // Show error toast if anything is missing
-      if (missingFields.length > 0 || missingFiles.length > 0) {
-        setIsSubmitting(false);
-        let message = '';
-
-        if (missingFields.length > 0) {
-          message += 'Please fill: ' + missingFields.join(', ');
+      // Convert files to base64
+      const filesBase64: { [key: string]: string | null } = {};
+      for (const [key, file] of Object.entries(files)) {
+        if (file) {
+          filesBase64[key] = await convertFileToBase64(file);
+        } else {
+          filesBase64[key] = null;
         }
-
-        if (missingFiles.length > 0) {
-          if (message) message += ' and ';
-          message += 'Please upload: ' + missingFiles.join(', ');
-        }
-
-        toast.error(message, {
-          duration: 5000,
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            minWidth: '300px',
-            padding: '16px',
-          }
-        });
-        return;
       }
 
-      const formData = new FormData();
-
-      // Add text fields
-      formData.append('name', (form.elements.namedItem('name') as HTMLInputElement).value);
-      formData.append('email', (form.elements.namedItem('email') as HTMLInputElement).value);
-      formData.append('phoneNumber', (form.elements.namedItem('phoneNumber') as HTMLInputElement).value);
-      formData.append('vahanRegistrationLink', vahanLink);
-      formData.append('isRcLost', isRcLost ? 'true' : 'false');
-      formData.append('isHypothecated', isHypothecationCleared ? 'true' : 'false');
-
-      // Add required files
-      if (files.adharCard) formData.append('adharCard', files.adharCard);
-      if (files.panCard) formData.append('panCard', files.panCard);
-      if (files.registrationCertificate) formData.append('registrationCertificate', files.registrationCertificate);
-      if (files.cancelledCheck) formData.append('cancelledCheck', files.cancelledCheck);
-      if (files.challanSeizureMemo) formData.append('challanSeizureMemo', files.challanSeizureMemo);
-
-      // Add optional files
-      if (files.deathCertificate) formData.append('deathCertificate', files.deathCertificate);
-      if (files.hypothecationClearanceDoc) formData.append('hypothecationClearanceDoc', files.hypothecationClearanceDoc);
-
-      // Add RC lost declaration if needed
-      if (isRcLost && form.elements.namedItem('rcLostDeclaration')) {
-        formData.append('rcLostDeclaration', (form.elements.namedItem('rcLostDeclaration') as HTMLInputElement).value);
-      }
-
-      const response = await fetch('/api/submit-documents', {
+      // Generate OTP
+      const response = await fetch('/api/generate-otp', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: (form.elements.namedItem('email') as HTMLInputElement).value,
+          phoneNumber: (form.elements.namedItem('phoneNumber') as HTMLInputElement).value,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        toast.dismiss(loadingToast);
-        toast.error(data.error || 'Something went wrong');
         throw new Error(data.error || 'Something went wrong');
       }
 
+      // Store form data in localStorage
+      const formDataToStore = {
+        name: (form.elements.namedItem('name') as HTMLInputElement).value,
+        email: (form.elements.namedItem('email') as HTMLInputElement).value,
+        phoneNumber: (form.elements.namedItem('phoneNumber') as HTMLInputElement).value,
+        files: filesBase64,
+        vahanRegistrationLink: vahanLink,
+        isRcLost,
+        isHypothecationCleared,
+        rcLostDeclaration: (form.elements.namedItem('rcLostDeclaration') as HTMLInputElement)?.value,
+        tempId: data.tempId,
+      };
+
+      localStorage.setItem('pendingSubmission', JSON.stringify(formDataToStore));
+
       toast.dismiss(loadingToast);
-      toast.success('Documents submitted successfully!');
-
-      // Reset form and state
-      form.reset();
-      setEmailInput('');
-      setVahanLink('');
-      setIsRcLost(null);
-      setIsHypothecationCleared(null);
-      setErrors({});
-      setFiles({});
-
-      // Clear file inputs
-      Object.values(fileInputsRef.current).forEach(input => {
-        if (input) {
-          input.value = '';
-        }
+      toast.success('Verification codes sent!', {
+        duration: 5000,
+        style: {
+          background: '#ffffff',
+          color: '#000000',
+          padding: '16px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        },
       });
 
+      router.push(`/verify?email=${encodeURIComponent(formDataToStore.email)}&phoneNumber=${encodeURIComponent(formDataToStore.phoneNumber)}&tempId=${data.tempId}`);
+
     } catch (error) {
-      console.error('Submission error:', error);
-      toast.error('Failed to submit documents. Please try again.');
+      toast.dismiss(loadingToast);
+      toast.error('Failed to send verification codes', {
+        style: {
+          background: '#ffffff',
+          color: '#ef4444',
+          padding: '16px',
+          borderRadius: '8px',
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const validateForm = () => {
-    const requiredFileLabels = {
+    const form = document.querySelector('form');
+    if (!form) return false;
+
+    const requiredFields = {
+      name: 'Name',
+      email: 'Email',
+      phoneNumber: 'Phone Number',
       adharCard: 'Aadhar Card',
       panCard: 'PAN Card',
       registrationCertificate: 'Registration Certificate',
@@ -175,16 +150,30 @@ export default function FormPage() {
       challanSeizureMemo: 'Challan Seizure Memo'
     };
 
-    const missingFiles = Object.entries(requiredFileLabels)
-      .filter(([key]) => !files[key])
+    // Check required text fields
+    for (const [fieldName, label] of Object.entries(requiredFields)) {
+      const input = form.elements.namedItem(fieldName) as HTMLInputElement;
+      if (!input?.value) {
+        toast.error(`Please enter ${label}`, {
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+          },
+        });
+        return false;
+      }
+    }
+
+    // Check required files
+    const missingFiles = Object.entries(requiredFields)
+      .filter(([key]) => files[key as keyof typeof files] === null)
       .map(([, label]) => label);
 
     if (missingFiles.length > 0) {
-      // Show individual toasts for each missing document
       missingFiles.forEach(doc => {
         toast.error(`Please upload ${doc}`, {
           duration: 3000,
-          position: 'top-center',
           style: {
             background: '#fee2e2',
             color: '#991b1b',
@@ -199,7 +188,6 @@ export default function FormPage() {
     if (isHypothecationCleared === true && !files.hypothecationClearanceDoc) {
       toast.error('Please upload Hypothecation Clearance Document', {
         duration: 3000,
-        position: 'top-center',
         style: {
           background: '#fee2e2',
           color: '#991b1b',
