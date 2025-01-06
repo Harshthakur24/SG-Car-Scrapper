@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// This is the correct type signature for Next.js 15 dynamic route handlers
 export async function GET(
-    request: NextRequest,
-    context: { params: { id: string } }
-) {
-    if (!context.params.id) {
-        return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    _req: NextRequest,
+    { params }: { params: { id: string } }
+): Promise<NextResponse> {
+    if (!params?.id) {
+        return NextResponse.json(
+            { error: 'Invalid user ID' },
+            { status: 400 }
+        );
     }
 
     try {
         const user = await prisma.user.findUnique({
             where: {
-                id: String(context.params.id)
+                id: params.id
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                // Add other fields you want to return
             }
         });
 
@@ -24,8 +34,9 @@ export async function GET(
         }
 
         return NextResponse.json({ data: user });
+
     } catch (error) {
-        console.error('Error fetching user:', error);
+        console.error('[GET_USER_BY_ID]', error);
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
