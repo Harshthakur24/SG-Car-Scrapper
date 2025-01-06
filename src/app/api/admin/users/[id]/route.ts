@@ -1,20 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(
-    request: Request,
-    { params }: { params: { id: string } }
-) {
-    try {
-        if (!params.id) {
-            return NextResponse.json(
-                { error: 'User ID is required' },
-                { status: 400 }
-            );
-        }
+type Params = { params: { id: string } }
 
+export async function GET(
+    request: NextRequest,
+    { params }: Params
+) {
+    if (!params.id) {
+        return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    try {
         const user = await prisma.user.findUnique({
-            where: { id: params.id }
+            where: {
+                id: String(params.id)
+            }
         });
 
         if (!user) {
@@ -24,18 +25,11 @@ export async function GET(
             );
         }
 
-        // Format dates before sending
-        const formattedUser = {
-            ...user,
-            createdAt: user.createdAt.toISOString(),
-            updatedAt: user.updatedAt.toISOString(),
-        };
-
-        return NextResponse.json(formattedUser);
+        return NextResponse.json({ data: user });
     } catch (error) {
         console.error('Error fetching user:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch user' },
+            { error: 'Internal server error' },
             { status: 500 }
         );
     }
