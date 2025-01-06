@@ -1,36 +1,47 @@
 import { NextResponse } from 'next/server';
 import { generateOTP, sendVerificationEmail } from '@/lib/email';
-import { sendVerificationSMS } from '@/lib/twilio';
 
-export async function POST(request: Request) {
-  try {
-    const { email, phoneNumber } = await request.json();
-    const otp = generateOTP();
-    const tempId = crypto.randomUUID();
+export async function POST(req: Request) {
+    try {
+        const { email, phoneNumber } = await req.json();
 
-    // Store OTP for email verification
-    global.otpStore = global.otpStore || new Map();
-    global.otpStore.set(tempId, {
-      otp,
-      email,
-      phoneNumber,
-      expires: new Date(Date.now() + 10 * 60 * 1000),
-    });
+        // Validate inputs
+        if (!email || !phoneNumber) {
+            return NextResponse.json(
+                { error: 'Missing required fields' },
+                { status: 400 }
+            );
+        }
 
-    // Send email OTP
-    await sendVerificationEmail(email, otp);
-    // Send SMS verification
-    await sendVerificationSMS(phoneNumber);
+        // Generate OTP
+        const otp = generateOTP();
+        const tempId = crypto.randomUUID();
 
-    return NextResponse.json({ 
-      message: 'Verification codes sent',
-      tempId 
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to send verification' },
-      { status: 500 }
-    );
-  }
+        // Store OTP
+        global.otpStore = global.otpStore || new Map();
+        global.otpStore.set(tempId, {
+            otp,
+            email,
+            phoneNumber,
+            expires: new Date(Date.now() + 10 * 60 * 1000),
+            attempts: 0,
+            verified: false
+        });
+
+        // Send email verification
+        await sendVerificationEmail(email, otp);
+
+        return NextResponse.json({ 
+            success: true, 
+            tempId,
+            message: 'Verification code sent' 
+        });
+
+    } catch (error) {
+        console.error('OTP generation error:', error);
+        return NextResponse.json(
+            { error: 'Failed to send verification code' },
+            { status: 500 }
+        );
+    }
 } 

@@ -15,24 +15,23 @@ datasource db {
 }
 
 model User {
-  id                        String    @id @default(cuid())
+  id                        String   @id @default(cuid())
   name                      String
   email                     String
   phoneNumber               String
+  aadharNumber              String
   adharCard                 String
   panCard                   String
   registrationCertificate   String
   deathCertificate          String?
   cancelledCheck            String
   challanSeizureMemo        String
-  isHypothecated            Boolean
   hypothecationClearanceDoc String?
-  isRcLost                  Boolean
+  isHypothecated            Boolean  @default(false)
+  isRcLost                  Boolean  @default(false)
   rcLostDeclaration         String?
-  vahanRegistrationLink     String
-  isVerified                Boolean   @default(false)
-  verificationCode          String?
-  verificationExpires       DateTime?
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
+  vahanRegistrationLink     String?
+  isVerified                Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 }

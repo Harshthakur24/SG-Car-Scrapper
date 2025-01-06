@@ -5,6 +5,8 @@ declare global {
     email: string;
     phoneNumber: string;
     expires: Date;
+    attempts: number;
+    verified: boolean;
   }>;
 }
 

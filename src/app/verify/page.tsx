@@ -28,67 +28,104 @@ function VerifyContent() {
         const loadingToast = toast.loading('Verifying...');
 
         try {
-            const storedData = localStorage.getItem('pendingSubmission');
-            if (!storedData) {
-                throw new Error('No pending submission found');
+            const basicData = localStorage.getItem('pendingBasicData');
+            if (!basicData) throw new Error('No pending submission found');
+
+            // Reconstruct the full form data
+            const formData = JSON.parse(basicData);
+            formData.files = {};
+
+            // Collect stored files
+            const fileKeys = ['adharCard', 'panCard', 'registrationCertificate', 'cancelledCheck',
+                'challanSeizureMemo', 'deathCertificate', 'hypothecationClearanceDoc'];
+
+            const reconstructFile = (key: string): string | null => {
+                const chunks = parseInt(localStorage.getItem(`file_${key}_chunks`) || '0');
+                if (!chunks) return null;
+
+                let result = '';
+                for (let i = 0; i < chunks; i++) {
+                    const chunk = localStorage.getItem(`file_${key}_${i}`);
+                    if (!chunk) return null;
+                    result += chunk;
+                }
+                return result;
+            };
+
+            for (const key of fileKeys) {
+                const fileData = reconstructFile(key);
+                if (fileData) {
+                    formData.files[key] = fileData;
+                    // Clean up chunks
+                    const chunks = parseInt(localStorage.getItem(`file_${key}_chunks`) || '0');
+                    for (let i = 0; i < chunks; i++) {
+                        localStorage.removeItem(`file_${key}_${i}`);
+                    }
+                    localStorage.removeItem(`file_${key}_chunks`);
+                }
             }
 
-            const formData = JSON.parse(storedData);
+            // Verify OTP
             const response = await fetch('/api/verify-otp', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email,
                     phoneNumber,
                     otp: otp.trim(),
                     tempId,
-                    formData,
                     method: verificationMethod,
+                    formData,
                 }),
             });
 
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error);
+            let data;
+            try {
+                data = await response.json();
+            } catch (error) {
+                throw new Error('Invalid server response');
+            }
+
+            if (!response.ok || !data.success) {
+                throw new Error(data?.error || 'Verification failed');
             }
 
             toast.dismiss(loadingToast);
-
-            // Sequential toasts for better UX
-            toast.success('Verification successful!', {
-                duration: 2000,
-                style: {
-                    background: '#ffffff',
-                    color: '#000000',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                },
-            });
-
-            setTimeout(() => {
-
-                localStorage.removeItem('pendingSubmission');
-                router.push('/success');
-            }, 2000);
+            toast.success('Verification successful!');
+            localStorage.removeItem('pendingBasicData');
+            router.push('/success');
 
         } catch (error) {
             toast.dismiss(loadingToast);
             toast.error(error instanceof Error ? error.message : 'Verification failed');
+            console.error('Verification error:', error);
         } finally {
             setIsVerifying(false);
         }
     };
 
     const handleResendOtp = async () => {
+        // Add cooldown check
+        const lastAttempt = localStorage.getItem('lastResendAttempt');
+        if (lastAttempt) {
+            const cooldownTime = 30000; // 30 seconds
+            const timeSinceLastAttempt = Date.now() - parseInt(lastAttempt);
+            if (timeSinceLastAttempt < cooldownTime) {
+                toast.error(`Please wait ${Math.ceil((cooldownTime - timeSinceLastAttempt) / 1000)} seconds before requesting another code`);
+                return;
+            }
+        }
+
+        const loadingToast = toast.loading(
+            verificationMethod === 'email'
+                ? 'Sending email verification code...'
+                : 'Sending SMS verification code...'
+        );
+
         try {
             const response = await fetch('/api/resend-otp', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email,
                     phoneNumber,
@@ -97,24 +134,39 @@ function VerifyContent() {
                 }),
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to resend OTP');
+            const data = await response.json();
+            toast.dismiss(loadingToast);
+
+            if (!response.ok || !data.success) {
+                throw new Error(data?.error || 'Failed to send verification code');
             }
 
-            if (verificationMethod === 'phone') {
-                toast.success('OTP sent to your phone number', {
-                    style: {
-                        background: '#ffffff',
-                        color: '#000000',
-                        padding: '16px',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    },
-                });
+            // Handle SMS fallback to email
+            if (data.fallbackToEmail) {
+                setVerificationMethod('email');
             }
+
+            // Store last attempt timestamp
+            localStorage.setItem('lastResendAttempt', Date.now().toString());
+
+            toast.success(data.message, {
+                duration: 4000,
+                icon: data.fallbackToEmail || verificationMethod === 'email' ? '📧' : '📱'
+            });
+
         } catch (error) {
-            toast.error('Failed to resend OTP');
+            toast.dismiss(loadingToast);
+            toast.error(error instanceof Error ? error.message : 'Failed to send verification code');
+            console.error('Resend error:', error);
         }
+    };
+
+    const handlePhoneVerification = () => {
+        setVerificationMethod('phone');
+        toast.success('Click "Resend Code" to get OTP on your phone', {
+            icon: '📱',
+            duration: 4000
+        });
     };
 
     return (
@@ -148,10 +200,7 @@ function VerifyContent() {
                             Verify by Email
                         </button>
                         <button
-                            onClick={() => {
-                                setVerificationMethod('phone');
-                                toast.success('Click "Resend Code" to get OTP on your phone');
-                            }}
+                            onClick={handlePhoneVerification}
                             className={`flex-1 py-3 px-4 rounded-lg transition-all duration-200 ${verificationMethod === 'phone'
                                 ? 'bg-white shadow-md text-blue-600 font-medium transform scale-105'
                                 : 'text-gray-600 hover:bg-gray-50'

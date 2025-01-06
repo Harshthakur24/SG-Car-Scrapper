@@ -7,6 +7,62 @@ import { motion } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
+async function compressAndProcessFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      try {
+        // Check if file is an image
+        if (file.type.startsWith('image/')) {
+          const img = new Image();
+          img.src = reader.result as string;
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              if (!ctx) throw new Error('Failed to get canvas context');
+
+              const maxSize = 600;
+              let width = img.width;
+              let height = img.height;
+
+              const ratio = Math.min(maxSize / width, maxSize / height);
+              width = Math.floor(width * ratio);
+              height = Math.floor(height * ratio);
+
+              canvas.width = width;
+              canvas.height = height;
+              ctx.drawImage(img, 0, 0, width, height);
+
+              // Adjust quality based on file size
+              let quality = 0.7;
+              if (file.size > 2000000) quality = 0.5;
+              if (file.size > 5000000) quality = 0.3;
+
+              const compressed = canvas.toDataURL('image/jpeg', quality);
+              resolve(compressed);
+            } catch (error) {
+              reject(new Error('Failed to compress image. Please try a different file.'));
+            }
+          };
+          img.onerror = () => reject(new Error('Failed to load image. Please try a different file.'));
+        } else {
+          // For non-image files
+          if (file.size > 1000000) {
+            reject(new Error('File too large. Please upload a file smaller than 1MB.'));
+          } else {
+            resolve(reader.result as string);
+          }
+        }
+      } catch (error) {
+        reject(new Error('Failed to process file. Please try again.'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file. Please try again.'));
+  });
+}
+
 export default function FormPage() {
   const [emailInput, setEmailInput] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -42,94 +98,90 @@ export default function FormPage() {
   });
   const router = useRouter();
 
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
-    const loadingToast = toast.loading('Sending verification code...');
+    const loadingToast = toast.loading('Processing files...');
 
     try {
-      // Convert files to base64
-      const filesBase64: { [key: string]: string | null } = {};
+      const formData = new FormData(e.currentTarget);
+      const formJson = Object.fromEntries(formData.entries());
+
+      // Process files one by one with better error handling
+      const processedFiles: { [key: string]: string } = {};
       for (const [key, file] of Object.entries(files)) {
         if (file) {
-          filesBase64[key] = await convertFileToBase64(file);
-        } else {
-          filesBase64[key] = null;
+          try {
+            const compressedData = await compressAndProcessFile(file);
+            processedFiles[key] = compressedData;
+          } catch (error) {
+            console.error(`Error processing ${key}:`, error);
+            throw new Error(`Failed to process ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
+          }
         }
       }
 
-      // Generate OTP
+      // 3. Store data
+      const chunkSize = 500000; // 500KB chunks
+      const basicData = {
+        ...formJson,
+        isRcLost,
+        isHypothecationCleared,
+        vahanRegistrationLink: vahanLink
+      };
+
+      // Store basic data
+      localStorage.setItem('pendingBasicData', JSON.stringify(basicData));
+
+      // Store files in chunks
+      for (const [key, value] of Object.entries(processedFiles)) {
+        try {
+          const chunks = Math.ceil(value.length / chunkSize);
+          for (let i = 0; i < chunks; i++) {
+            const chunk = value.slice(i * chunkSize, (i + 1) * chunkSize);
+            localStorage.setItem(`file_${key}_${i}`, chunk);
+          }
+          localStorage.setItem(`file_${key}_chunks`, chunks.toString());
+        } catch (error) {
+          console.error(`Failed to store ${key}:`, error);
+          // Clean up any stored chunks
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('file_'))
+            .forEach(k => localStorage.removeItem(k));
+          throw new Error('Failed to store files. Please try with smaller files or fewer files.');
+        }
+      }
+
+      // 4. Generate OTP
+      toast.dismiss(loadingToast);
+      const otpToast = toast.loading('Sending verification code...');
+
       const response = await fetch('/api/generate-otp', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: (form.elements.namedItem('email') as HTMLInputElement).value,
-          phoneNumber: (form.elements.namedItem('phoneNumber') as HTMLInputElement).value,
+          email: formJson.email,
+          phoneNumber: formJson.phoneNumber,
         }),
       });
 
       const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Something went wrong');
+        throw new Error(data.error || 'Failed to send verification code');
       }
 
-      // Store form data in localStorage
-      const formDataToStore = {
-        name: (form.elements.namedItem('name') as HTMLInputElement).value,
-        email: (form.elements.namedItem('email') as HTMLInputElement).value,
-        phoneNumber: (form.elements.namedItem('phoneNumber') as HTMLInputElement).value,
-        files: filesBase64,
-        vahanRegistrationLink: vahanLink,
-        isRcLost,
-        isHypothecationCleared,
-        rcLostDeclaration: (form.elements.namedItem('rcLostDeclaration') as HTMLInputElement)?.value,
-        tempId: data.tempId,
-      };
-
-      localStorage.setItem('pendingSubmission', JSON.stringify(formDataToStore));
-
-      toast.dismiss(loadingToast);
-      toast.success('Verification codes sent!', {
-        duration: 5000,
-        style: {
-          background: '#ffffff',
-          color: '#000000',
-          padding: '16px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        },
-      });
-
-      router.push(`/verify?email=${encodeURIComponent(formDataToStore.email)}&phoneNumber=${encodeURIComponent(formDataToStore.phoneNumber)}&tempId=${data.tempId}`);
+      // 5. Success
+      toast.dismiss(otpToast);
+      toast.success('Verification code sent!');
+      router.replace(`/verify?email=${encodeURIComponent(formJson.email as string)}&phoneNumber=${encodeURIComponent(formJson.phoneNumber as string)}&tempId=${data.tempId}`);
 
     } catch (error) {
       toast.dismiss(loadingToast);
-      toast.error('Failed to send verification codes', {
-        style: {
-          background: '#ffffff',
-          color: '#ef4444',
-          padding: '16px',
-          borderRadius: '8px',
-        },
-      });
+      toast.error(error instanceof Error ? error.message : 'Failed to process submission');
+      console.error('Submission error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -197,6 +249,20 @@ export default function FormPage() {
       return false;
     }
 
+    // Add Aadhar validation
+    const aadharNumber = (form.elements.namedItem('aadharNumber') as HTMLInputElement).value;
+    const cleanAadhar = aadharNumber.replace(/\s/g, '');
+    if (!cleanAadhar || !/^\d{12}$/.test(cleanAadhar)) {
+      toast.error('Please enter a valid 12-digit Aadhar number', {
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '16px',
+        },
+      });
+      return false;
+    }
+
     return true;
   };
 
@@ -254,7 +320,7 @@ export default function FormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-base font-bold text-gray-900 mb-2">
-                      Your Name
+                      Full Name
                     </label>
                     <input
                       type="text"
@@ -277,53 +343,82 @@ export default function FormPage() {
                     <label className="block text-base font-bold text-gray-900 mb-2">
                       Phone Number
                     </label>
-                    <div className="flex">
-                      <span className="inline-flex items-center px-3 py-2 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-600 font-medium">
-                        +91
-                      </span>
-                      <input
-                        type="tel"
-                        name="phoneNumber"
-                        pattern="[0-9]{10}"
-                        maxLength={10}
-                        onKeyPress={(e) => {
-                          if (!/[0-9]/.test(e.key)) {
-                            e.preventDefault();
-                          }
-                        }}
-                        className="w-full px-4 py-2 rounded-r-lg border border-gray-300 bg-gray-50 text-gray-900 hover:border-blue-300 focus:border-blue-600 focus:bg-white focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        required
-                        placeholder="Enter your phone number"
-                      />
-                    </div>
+                    <input
+                      type="tel"
+                      name="phoneNumber"
+                      required
+                      className={cn(
+                        "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
+                        errors.phoneNumber
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : "border-gray-300 hover:border-blue-300 focus:border-blue-500 focus:ring-blue-200"
+                      )}
+                      placeholder="Enter your phone number"
+                    />
+                    {errors.phoneNumber && (
+                      <p className="mt-1 text-sm text-red-500">{errors.phoneNumber}</p>
+                    )}
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div>
                     <label className="block text-base font-bold text-gray-900 mb-2">
                       Email Address
                     </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        name="email"
-                        required
-                        className={cn(
-                          "w-6/12 px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
-                          errors.email
-                            ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                            : "border-gray-300 hover:border-blue-300 focus:border-blue-500 focus:ring-blue-200"
-                        )}
-                        placeholder="Enter your email"
-                        value={emailInput}
-                        onChange={(e) => {
-                          setEmailInput(e.target.value);
-                          setErrors({ ...errors, email: '' }); // Clear error on change
-                        }}
-                      />
-                      {errors.email && (
-                        <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      className={cn(
+                        "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
+                        errors.email
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : "border-gray-300 hover:border-blue-300 focus:border-blue-500 focus:ring-blue-200"
                       )}
-                    </div>
+                      placeholder="Enter your email"
+                      value={emailInput}
+                      onChange={(e) => {
+                        setEmailInput(e.target.value);
+                        setErrors({ ...errors, email: '' });
+                      }}
+                    />
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-base font-bold text-gray-900 mb-2">
+                      Aadhar Card Number
+                    </label>
+                    <input
+                      type="text"
+                      name="aadharNumber"
+                      pattern="\d{4}\s\d{4}\s\d{4}"
+                      maxLength={14}
+                      required
+                      className={cn(
+                        "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
+                        errors.aadharNumber
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : "border-gray-300 hover:border-blue-300 focus:border-blue-500 focus:ring-blue-200"
+                      )}
+                      placeholder="XXXX XXXX XXXX"
+                      onKeyPress={(e) => {
+                        if (!/[0-9]/.test(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\s/g, '');
+                        if (value.length <= 12) {
+                          const formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+                          e.target.value = formatted;
+                        }
+                      }}
+                    />
+                    {errors.aadharNumber && (
+                      <p className="mt-1 text-sm text-red-500">{errors.aadharNumber}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -603,22 +698,35 @@ export default function FormPage() {
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-center">
+              <div className="pt-4">
                 <button
                   type="submit"
-                  onClick={(e) => {
-                    if (!validateForm()) {
-                      e.preventDefault();
-                      return;
-                    }
-                  }}
                   disabled={isSubmitting}
-                  className={`w-full md:w-4/12 bg-gradient-to-r ${isSubmitting
-                    ? 'from-gray-400 to-gray-500 cursor-not-allowed'
-                    : 'from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                    } text-white text-lg font-semibold py-4 px-8 rounded-full focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 transform hover:scale-[1.06] hover:shadow-2xl shadow-lg`}
+                  className={`
+                    w-full md:w-auto px-12 py-5 
+                    bg-gradient-to-r from-blue-600 to-blue-700 
+                    hover:from-blue-700 hover:to-blue-800
+                    text-white font-semibold rounded-full
+                    transform transition-all duration-300
+                    hover:scale-[1.12] active:scale-[0.98]
+                    disabled:opacity-70 disabled:cursor-not-allowed
+                    shadow-md hover:shadow-lg
+                    flex items-center justify-center
+                    min-w-[250px] mx-auto 
+                    text-lg
+                  `}
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Documents'}
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Application'
+                  )}
                 </button>
               </div>
             </form>

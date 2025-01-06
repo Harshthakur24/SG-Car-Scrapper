@@ -23,6 +23,8 @@ export async function POST(request: Request) {
       email,
       phoneNumber: formData.get('phoneNumber') as string,
       expires: new Date(Date.now() + 10 * 60 * 1000),
+      attempts: 0,
+      verified: false
     });
 
     // Send verification email
