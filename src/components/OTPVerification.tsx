@@ -64,10 +64,10 @@ export default function OTPVerification() {
             toast.dismiss()
             if (data.success) {
 
-                toast.success('Welcome, Admin!', { duration: 2000 })
+                toast.success('Welcome, Admin!', { duration: 2500 })
                 setTimeout(() => {
                     window.location.reload()
-                }, 1000)
+                }, 1500)
             }
         } catch (error) {
             toast.dismiss()
