@@ -1,14 +1,12 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
   "builds": [
     {
       "src": "package.json",
       "use": "@vercel/next"
     }
-  ],
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_API_URL": "@next_public_api_url"
-    }
-  }
+  ]
 } 
