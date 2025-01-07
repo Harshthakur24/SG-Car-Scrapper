@@ -66,17 +66,29 @@ export const UserDocumentsPDF = ({ user }: { user: User }) => {
         <a
             href={URL.createObjectURL(pdfBlob)}
             download="all-documents.pdf"
-            className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition hover:scale-110 duration-300 shadow-md hover:shadow-lg"
+            className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 
+                text-white font-medium rounded-3xl hover:from-red-600 hover:to-red-700
+                transform hover:scale-110 active:scale-100
+                transition-all duration-300 ease-in-out
+                shadow-[0_4px_12px_rgba(220,38,38,0.25)] hover:shadow-[0_6px_16px_rgba(220,38,38,0.35)]
+                focus:outline-none"
         >
             <svg
-                className="h-5 w-5"
+                className="h-5 w-5 transition-transform group-hover:translate-y-0.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
             >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
             </svg>
-            <span>Download All Documents</span>
+            <span className="text-sm font-semibold tracking-wide">
+                Download All Documents
+            </span>
         </a>
     );
 }; 

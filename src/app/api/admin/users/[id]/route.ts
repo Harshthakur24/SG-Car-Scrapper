@@ -3,31 +3,70 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params;
-
     const user = await prisma.user.findUnique({
-      where: { id },
+      where: {
+        id: params.id
+      },
       select: {
         id: true,
         name: true,
         email: true,
         phoneNumber: true,
+        aadharNumber: true,
         vehicleNumber: true,
+        createdAt: true,
         paymentDone: true,
-      },
+        isRcLost: true,
+        isHypothecated: true,
+        rcLostDeclaration: true,
+        // Document URLs
+        adharCard: true,
+        panCard: true,
+        registrationCertificate: true,
+        cancelledCheck: true,
+        challanSeizureMemo: true,
+        deathCertificate: true,
+        hypothecationClearanceDoc: true,
+      }
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(user);
+    // Transform document URLs to full URLs if needed
+    const transformedUser = {
+      ...user,
+      adharCard: getFullUrl(user.adharCard),
+      panCard: getFullUrl(user.panCard),
+      registrationCertificate: getFullUrl(user.registrationCertificate),
+      cancelledCheck: getFullUrl(user.cancelledCheck),
+      challanSeizureMemo: getFullUrl(user.challanSeizureMemo),
+      deathCertificate: user.deathCertificate ? getFullUrl(user.deathCertificate) : null,
+      hypothecationClearanceDoc: user.hypothecationClearanceDoc ? getFullUrl(user.hypothecationClearanceDoc) : null,
+    };
+
+    return NextResponse.json(transformedUser);
   } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('Error fetching user:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch user' },
+      { status: 500 }
+    );
   }
+}
+
+function getFullUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  if (url.includes('res.cloudinary.com')) return `https://${url}`;
+  return `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/raw/upload/${url}`;
 }
 
 export async function PUT(
