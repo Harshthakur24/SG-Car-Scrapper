@@ -5,6 +5,7 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  
   try {
     const user = await prisma.user.findUnique({
       where: {
@@ -22,7 +23,6 @@ export async function GET(
         isRcLost: true,
         isHypothecated: true,
         rcLostDeclaration: true,
-        // Document URLs
         adharCard: true,
         panCard: true,
         registrationCertificate: true,
