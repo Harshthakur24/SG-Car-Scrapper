@@ -1,13 +1,14 @@
 {
-  "buildCommand": "prisma generate && next build",
-  "installCommand": "npm install",
+  "version": 2,
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/node",
-      "config": {
-        "installCommand": "apt-get update && apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev && npm install"
-      }
+      "use": "@vercel/next"
     }
-  ]
+  ],
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_API_URL": "@next_public_api_url"
+    }
+  }
 } 
