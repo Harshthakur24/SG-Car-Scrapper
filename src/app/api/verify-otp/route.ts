@@ -26,7 +26,7 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        // Clean up OTP after successful verification
+        // Clean up OTP after successful
         global.otpStore?.delete(tempId);
 
         // Verify OTP before proceeding
