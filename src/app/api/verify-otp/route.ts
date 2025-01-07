@@ -19,26 +19,58 @@ export async function POST(request: Request) {
 
         // Verify OTP from store
         const otpData = global.otpStore?.get(tempId);
-        if (!otpData || otpData.email !== email || otpData.otp !== otp) {
+        if (!otpData || otpData.email !== email) {
             return NextResponse.json({ 
                 success: false,
                 error: 'Invalid verification code' 
             }, { status: 400 });
         }
 
-        // Clean up OTP after successful
-        global.otpStore?.delete(tempId);
-
         // Verify OTP before proceeding
         if (method === 'phone') {
+            console.log('Starting phone verification process:', {
+                phoneNumber,
+                otp,
+                tempId,
+                otpDataExists: !!otpData
+            });
+
+            if (!process.env.TWILIO_VERIFY_SERVICE_SID) {
+                console.error('Missing TWILIO_VERIFY_SERVICE_SID environment variable');
+                return NextResponse.json({ 
+                    success: false,
+                    error: 'Server configuration error' 
+                }, { status: 500 });
+            }
+            
             const isValid = await verifyOTP(phoneNumber, otp);
+            console.log('Phone verification result:', { isValid });
+
             if (!isValid) {
                 return NextResponse.json({ 
                     success: false,
                     error: 'Invalid verification code' 
                 }, { status: 400 });
             }
+        } else {
+            console.log('Starting email verification process:', {
+                email,
+                providedOtp: otp,
+                storedOtp: otpData?.otp,
+                tempId,
+                otpDataExists: !!otpData
+            });
+
+            if (otpData.otp !== otp) {
+                return NextResponse.json({ 
+                    success: false,
+                    error: 'Invalid verification code' 
+                }, { status: 400 });
+            }
         }
+
+        // Clean up OTP after successful verification
+        global.otpStore?.delete(tempId);
 
         // Log received data
         console.log('Received form data:', formData);
