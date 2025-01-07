@@ -12,15 +12,15 @@ function VerifyContent() {
     const [verificationMethod, setVerificationMethod] = useState<VerificationMethod>('email');
     const router = useRouter();
     const searchParams = useSearchParams();
-    const email = searchParams.get('email');
-    const tempId = searchParams.get('tempId');
-    const phoneNumber = searchParams.get('phoneNumber');
+    const email = searchParams?.get('email');
+    const tempId = searchParams?.get('tempId');
+    const phoneNumber = searchParams?.get('phoneNumber');
 
     useEffect(() => {
-        if (!email || !tempId || !phoneNumber) {
+        if (!searchParams || !email || !tempId || !phoneNumber) {
             router.push('/');
         }
-    }, [email, tempId, phoneNumber, router]);
+    }, [searchParams, email, tempId, phoneNumber, router]);
 
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -87,7 +87,26 @@ function VerifyContent() {
             }
 
             if (!response.ok || !data.success) {
-                throw new Error(data?.error || 'Verification failed');
+                const errorMessage = data?.error || 'Verification failed';
+
+                // Handle specific error cases
+                if (data?.code === 'VEHICLE_EXISTS') {
+                    toast.error('Registration already exists for this vehicle number', {
+                        duration: 4000,
+                        icon: '🚗'
+                    });
+                    return;
+                }
+
+                if (data?.code === 'PAYMENT_DONE') {
+                    toast.error('Payment has already been processed for this vehicle number', {
+                        duration: 4000,
+                        icon: '💰'
+                    });
+                    return;
+                }
+
+                throw new Error(errorMessage);
             }
 
             toast.dismiss(loadingToast);

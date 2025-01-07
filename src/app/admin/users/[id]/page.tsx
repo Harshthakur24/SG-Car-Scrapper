@@ -4,31 +4,83 @@ import { useEffect, useState, use } from 'react'
 import { User } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import toast from 'react-hot-toast'
+import { Toaster } from 'react-hot-toast'
+import { UserDocumentsPDF } from '@/components/UserDocumentsPDF'
 
-// Replace icon components with SVG elements
+
 const ArrowLeftIcon = () => (
-    <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" role="presentation">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
     </svg>
 )
 
-const CheckCircleIcon = () => (
-    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-)
+interface ConfirmationDialogProps {
+    isOpen: boolean
+    onClose: () => void
+    onConfirm: () => void
+    isPaymentDone: boolean
+    userName: string
+}
 
-const XCircleIcon = () => (
-    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-)
+function ConfirmationDialog({ isOpen, onClose, onConfirm, isPaymentDone, userName }: ConfirmationDialogProps) {
+    if (!isOpen) return null
+
+    return (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4 text-center">
+                <div className="fixed inset-0 bg-black/30 transition-opacity" onClick={onClose} />
+
+                <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                    <div className="sm:flex sm:items-start">
+                        <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <AlertCircle className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                            <h3 className="text-lg font-semibold leading-6 text-gray-900">
+                                Confirm Payment Status Update
+                            </h3>
+                            <div className="mt-2">
+                                <p className="text-sm text-gray-500">
+                                    Are you sure you want to {isPaymentDone ? 'unmark' : 'mark'} the payment as
+                                    {isPaymentDone ? ' not done' : ' done'} for <span className="font-medium text-gray-900">{userName}</span>?
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse gap-3">
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-sm sm:w-auto
+                                ${isPaymentDone
+                                    ? 'bg-red-500 hover:bg-red-600'
+                                    : 'bg-green-500 hover:bg-green-600'} 
+                                transition-all duration-200`}
+                        >
+                            {isPaymentDone ? 'Unmark Payment' : 'Mark as Paid'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export default function UserDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = use(params)
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
+    const [updating, setUpdating] = useState(false)
+    const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
@@ -47,9 +99,52 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
         fetchUser()
     }, [id])
 
+    const handlePaymentToggle = async () => {
+        setIsConfirmationOpen(true)
+    }
+
+    const handleConfirmPaymentToggle = async () => {
+        setIsConfirmationOpen(false)
+        setUpdating(true)
+        try {
+            const response = await fetch(`/api/admin/users/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    paymentDone: !user?.paymentDone,
+                }),
+            })
+
+            if (!response.ok) throw new Error('Failed to update payment status')
+
+            setUser(prev => prev ? { ...prev, paymentDone: !prev.paymentDone } : null)
+
+            // Simplified toast notification
+            toast.success(
+                `Payment ${!user?.paymentDone ? 'marked' : 'unmarked'} as done`,
+                {
+                    icon: !user?.paymentDone ? '✅' : '❌',
+                    duration: 5000,
+                    style: {
+                        padding: '14px',
+                        borderRadius: '14px',
+                        fontSize: '1rem',
+                    },
+                }
+            )
+        } catch (error) {
+            console.error('Error updating payment status:', error)
+            toast.error('Failed to update payment status')
+        } finally {
+            setUpdating(false)
+        }
+    }
+
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="min-h-screen bg-white flex items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-[#004a7c]" />
             </div>
         )
@@ -73,6 +168,15 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
+            <Toaster position="top-center" />
+            <ConfirmationDialog
+                isOpen={isConfirmationOpen}
+                onClose={() => setIsConfirmationOpen(false)}
+                onConfirm={handleConfirmPaymentToggle}
+                isPaymentDone={user?.paymentDone || false}
+                userName={user?.name || ''}
+            />
+
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header Section */}
                 <div className="flex items-center justify-between mb-8">
@@ -83,9 +187,41 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                         <ArrowLeftIcon />
                         Back to submissions
                     </button>
-                    <div className="flex items-center space-x-2">
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                            Active User
+                    <div className="flex items-center space-x-4">
+                        <button
+                            onClick={handlePaymentToggle}
+                            disabled={updating}
+                            className={`
+                                relative overflow-hidden px-6 py-3 rounded-lg font-semibold text-white shadow-lg
+                                transition-all duration-300 transform hover:scale-110 hover:shadow-xl
+                                flex items-center justify-center min-w-[200px] group
+                                ${user?.paymentDone
+                                    ? 'bg-gradient-to-r from-red-500 to-red-600'
+                                    : 'bg-gradient-to-r from-green-500 to-green-600'
+                                }
+                                ${updating ? 'opacity-75 cursor-not-allowed' : ''}
+                            `}
+                        >
+                            <span className="absolute inset-0 w-full h-full bg-white/10 group-hover:scale-105 transition-transform duration-300"></span>
+                            {updating ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : user?.paymentDone ? (
+                                <>
+                                    <XCircle className="h-5 w-5 mr-2" />
+                                    Unmark Payment Done
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle className="h-5 w-5 mr-2" />
+                                    Mark Payment Done
+                                </>
+                            )}
+                        </button>
+                        <span className={`px-6 py-3 rounded-full text-base font-semibold ${user?.paymentDone
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}>
+                            {user?.paymentDone ? 'Payment Done' : 'Payment Pending'}
                         </span>
                     </div>
                 </div>
@@ -93,7 +229,8 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                 {/* Main Content */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column - Personal Information */}
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* User Info Card */}
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             <div className="p-6 border-b border-gray-100">
                                 <div className="flex items-center space-x-4">
@@ -122,9 +259,41 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                 />
                                 <InfoItem
                                     label="Joined"
-                                    value={user.createdAt ? format(new Date(user.createdAt), 'PPP') : 'N/A'}
+                                    value={user.createdAt ? format(new Date(user.createdAt), 'PPp') : 'N/A'}
                                     icon="📅"
                                 />
+                            </div>
+                        </div>
+
+                        {/* PDF Download Card - Now as a separate card */}
+                        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                            <div className="p-6">
+                                <div className="text-center">
+                                    <div className="mb-4">
+                                        <div className="h-12 w-12 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+                                            <svg
+                                                className="h-6 w-6 text-red-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                                aria-hidden="true"
+                                                role="img"
+                                                aria-label="PDF document icon"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                        Download All Documents
+                                    </h3>
+                                    <p className="text-sm text-gray-500 mb-6">
+                                        Get all submitted documents in a single PDF file
+                                    </p>
+                                    <div className="flex justify-center">
+                                        <UserDocumentsPDF user={user} />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -172,9 +341,9 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                     />
                                 </div>
                                 {user.isRcLost && user.rcLostDeclaration && (
-                                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                        <h3 className="text-sm font-medium text-gray-700 mb-2">RC Lost Declaration</h3>
-                                        <p className="text-gray-600 text-sm">{user.rcLostDeclaration}</p>
+                                    <div className="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                                        <h3 className="text-base font-semibold text-gray-900 mb-3">RC Lost Declaration Statement</h3>
+                                        <p className="text-gray-900 text-base leading-relaxed">{user.rcLostDeclaration}</p>
                                     </div>
                                 )}
                             </div>
@@ -229,38 +398,59 @@ function EnhancedDocumentPreview({ label, url, type }: DocumentPreviewProps) {
         }
     };
 
+    const getDocumentUrl = (url: string | null) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        if (url.includes('res.cloudinary.com')) return `https://${url}`;
+        return `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/raw/upload/${url}`;
+    };
+
+    const documentUrl = getDocumentUrl(url);
+
     return (
         <div className={`rounded-lg border ${getTypeStyles()} p-4 hover:shadow-md transition-all duration-200`}>
             <div className="flex justify-between items-start mb-3">
                 <span className="text-sm font-medium">{label}</span>
                 <span className="text-xs uppercase">{type}</span>
             </div>
-            <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 text-sm hover:opacity-75 transition-opacity"
-            >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                        d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z" />
-                </svg>
-                <span>View Document</span>
-            </a>
+            {documentUrl ? (
+                <a
+                    href={documentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 text-sm hover:opacity-75 transition-opacity"
+                >
+                    <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        role="presentation"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z" />
+                    </svg>
+                    <span>View Document</span>
+                </a>
+            ) : (
+                <span className="text-sm text-gray-500">No document available</span>
+            )}
         </div>
-    )
+    );
 }
 
 function StatusCard({ title, status, label }: StatusCardProps) {
     return (
-        <div className={`p-4 rounded-lg ${status ? 'bg-green-50 border border-green-100' : 'bg-gray-50 border border-gray-100'
+        <div className={`p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-md
+            ${status
+                ? 'bg-red-50 border-red-200 hover:border-red-300'
+                : 'bg-green-50 border-green-200 hover:border-green-300'
             }`}>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">{title}</h3>
-            <div className="flex items-center space-x-2">
-                {status ? <CheckCircleIcon /> : <XCircleIcon />}
-                <span className={`text-sm ${status ? 'text-green-700' : 'text-gray-600'
-                    }`}>{label}</span>
+            <h3 className="text-base font-semibold text-gray-900 mb-3">{title}</h3>
+            <div className="flex items-center space-x-3">
+                <span className={`flex-shrink-0 w-3 h-3 rounded-full ${status ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                <span className="text-gray-900 font-medium">{label}</span>
             </div>
         </div>
-    )
+    );
 } 

@@ -101,14 +101,76 @@ export default function FormPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!validateForm()) return;
-
     setIsSubmitting(true);
-    const loadingToast = toast.loading('Processing files...');
+
+    // Create loading toast at the start
+    const loadingToast = toast.loading('Checking vehicle status...');
+
+    // Check if vehicle number is already present and payment is done
+    const formData = new FormData(e.currentTarget);
+    const vehicleNumber = formData.get('vehicleNumber') as string;
 
     try {
-      const formData = new FormData(e.currentTarget);
+      const vehicleCheckResponse = await fetch('/api/check-vehicle-and-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicleNumber }),
+      });
+
+      const vehicleData = await vehicleCheckResponse.json();
+
+      // Dismiss the loading toast
+      toast.dismiss(loadingToast);
+
+      if (!vehicleCheckResponse.ok) {
+        throw new Error(vehicleData.error || 'Failed to check vehicle and payment status');
+      }
+
+      if (vehicleData.vehicleExists) {
+        toast.error('Registration already exists for this vehicle number', {
+          duration: 4000,
+          icon: '🚗',
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+          },
+        });
+        return;
+      }
+
+      if (vehicleData.vehicleExists && !vehicleData.paymentDone) {
+        toast.error('Payment has already been processed for this vehicle number', {
+          duration: 4000,
+          icon: '💰',
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+          },
+        });
+        return;
+      }
+
+      // Proceed with form validation and submission if checks pass
+      if (!validateForm()) {
+        return;
+      }
+
       const formJson = Object.fromEntries(formData.entries());
+
+      // Log to verify vehicle number is included
+      console.log('Form data:', formJson);
+
+      // Store basic data
+      const basicData = {
+        ...formJson,
+        isRcLost,
+        isHypothecationCleared,
+        vahanRegistrationLink: vahanLink
+      };
+
+      localStorage.setItem('pendingBasicData', JSON.stringify(basicData));
 
       // Process files one by one with better error handling
       const processedFiles: { [key: string]: string } = {};
@@ -124,19 +186,8 @@ export default function FormPage() {
         }
       }
 
-      // 3. Store data
-      const chunkSize = 500000; // 500KB chunks
-      const basicData = {
-        ...formJson,
-        isRcLost,
-        isHypothecationCleared,
-        vahanRegistrationLink: vahanLink
-      };
-
-      // Store basic data
-      localStorage.setItem('pendingBasicData', JSON.stringify(basicData));
-
       // Store files in chunks
+      const chunkSize = 500000; // 500KB chunks
       for (const [key, value] of Object.entries(processedFiles)) {
         try {
           const chunks = Math.ceil(value.length / chunkSize);
@@ -191,40 +242,22 @@ export default function FormPage() {
     const form = document.querySelector('form');
     if (!form) return false;
 
-    const requiredFields = {
+    let isValid = true;
+
+    // Required text fields validation
+    const textFields = {
       name: 'Name',
       email: 'Email',
       phoneNumber: 'Phone Number',
-      adharCard: 'Aadhar Card',
-      panCard: 'PAN Card',
-      registrationCertificate: 'Registration Certificate',
-      cancelledCheck: 'Cancelled Check',
-      challanSeizureMemo: 'Challan Seizure Memo'
+      vehicleNumber: 'Vehicle Number',
+      aadharNumber: 'Aadhar Number'
     };
 
-    // Check required text fields
-    for (const [fieldName, label] of Object.entries(requiredFields)) {
+    // Check each text field
+    for (const [fieldName, label] of Object.entries(textFields)) {
       const input = form.elements.namedItem(fieldName) as HTMLInputElement;
-      if (!input?.value) {
+      if (!input?.value?.trim()) {
         toast.error(`Please enter ${label}`, {
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
-          },
-        });
-        return false;
-      }
-    }
-
-    // Check required files
-    const missingFiles = Object.entries(requiredFields)
-      .filter(([key]) => files[key as keyof typeof files] === null)
-      .map(([, label]) => label);
-
-    if (missingFiles.length > 0) {
-      missingFiles.forEach(doc => {
-        toast.error(`Please upload ${doc}`, {
           duration: 3000,
           style: {
             background: '#fee2e2',
@@ -232,13 +265,37 @@ export default function FormPage() {
             padding: '16px',
           },
         });
-      });
-      return false;
+        isValid = false;
+      }
     }
 
-    // Check hypothecation doc if needed
-    if (isHypothecationCleared === true && !files.hypothecationClearanceDoc) {
-      toast.error('Please upload Hypothecation Clearance Document', {
+    // Required file uploads validation
+    const requiredFiles = {
+      adharCard: 'Aadhar Card',
+      panCard: 'PAN Card',
+      registrationCertificate: 'Registration Certificate',
+      cancelledCheck: 'Cancelled Check',
+      challanSeizureMemo: 'Challan Seizure Memo'
+    };
+
+    // Check each required file
+    for (const [key, label] of Object.entries(requiredFiles)) {
+      if (!files[key as keyof typeof files]) {
+        toast.error(`Please upload ${label}`, {
+          duration: 3000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+          },
+        });
+        isValid = false;
+      }
+    }
+
+    // Check hypothecation status
+    if (isHypothecationCleared === null) {
+      toast.error('Please select whether your vehicle hypothecation is cleared', {
         duration: 3000,
         style: {
           background: '#fee2e2',
@@ -246,24 +303,46 @@ export default function FormPage() {
           padding: '16px',
         },
       });
-      return false;
-    }
-
-    // Add Aadhar validation
-    const aadharNumber = (form.elements.namedItem('aadharNumber') as HTMLInputElement).value;
-    const cleanAadhar = aadharNumber.replace(/\s/g, '');
-    if (!cleanAadhar || !/^\d{12}$/.test(cleanAadhar)) {
-      toast.error('Please enter a valid 12-digit Aadhar number', {
+      isValid = false;
+    } else if (isHypothecationCleared && !files.hypothecationClearanceDoc) {
+      toast.error('Please upload the Hypothecation Clearance Document', {
+        duration: 3000,
         style: {
           background: '#fee2e2',
           color: '#991b1b',
           padding: '16px',
         },
       });
-      return false;
+      isValid = false;
     }
 
-    return true;
+    // Check RC Lost status
+    if (isRcLost === null) {
+      toast.error('Please select whether your RC is lost', {
+        duration: 3000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '16px',
+        },
+      });
+      isValid = false;
+    } else if (isRcLost) {
+      const declaration = (form.elements.namedItem('rcLostDeclaration') as HTMLTextAreaElement)?.value;
+      if (!declaration?.trim()) {
+        toast.error('Please write a declaration about your lost RC', {
+          duration: 3000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+          },
+        });
+        isValid = false;
+      }
+    }
+
+    return isValid;
   };
 
   return (
@@ -320,12 +399,11 @@ export default function FormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-base font-bold text-gray-900 mb-2">
-                      Full Name
+                      RC Owner Name
                     </label>
                     <input
                       type="text"
                       name="name"
-                      required
                       className={cn(
                         "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
                         errors.name
@@ -346,7 +424,6 @@ export default function FormPage() {
                     <input
                       type="tel"
                       name="phoneNumber"
-                      required
                       className={cn(
                         "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
                         errors.phoneNumber
@@ -367,7 +444,6 @@ export default function FormPage() {
                     <input
                       type="email"
                       name="email"
-                      required
                       className={cn(
                         "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
                         errors.email
@@ -395,7 +471,6 @@ export default function FormPage() {
                       name="aadharNumber"
                       pattern="\d{4}\s\d{4}\s\d{4}"
                       maxLength={14}
-                      required
                       className={cn(
                         "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
                         errors.aadharNumber
@@ -420,6 +495,26 @@ export default function FormPage() {
                       <p className="mt-1 text-sm text-red-500">{errors.aadharNumber}</p>
                     )}
                   </div>
+
+                  <div>
+                    <label className="block text-base font-bold text-gray-900 mb-2">
+                      Vehicle Number
+                    </label>
+                    <input
+                      type="text"
+                      name="vehicleNumber"
+                      className={cn(
+                        "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all uppercase",
+                        errors.vehicleNumber
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : "border-gray-300 hover:border-blue-300 focus:border-blue-500 focus:ring-blue-200"
+                      )}
+                      placeholder="Enter vehicle number"
+                    />
+                    {errors.vehicleNumber && (
+                      <p className="mt-1 text-sm text-red-500">{errors.vehicleNumber}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -432,7 +527,6 @@ export default function FormPage() {
                   <FileUpload
                     label="Aadhar Card"
                     name="adharCard"
-                    required
                     ref={el => {
                       fileInputsRef.current.adharCard = el;
                     }}
@@ -445,7 +539,6 @@ export default function FormPage() {
                   <FileUpload
                     label="PAN Card"
                     name="panCard"
-                    required
                     ref={el => {
                       fileInputsRef.current.panCard = el;
                     }}
@@ -458,7 +551,6 @@ export default function FormPage() {
                   <FileUpload
                     label="Registration Certificate"
                     name="registrationCertificate"
-                    required
                     ref={el => {
                       fileInputsRef.current.registrationCertificate = el;
                     }}
@@ -483,7 +575,6 @@ export default function FormPage() {
                   <FileUpload
                     label="Cancelled Check / Pass Book"
                     name="cancelledCheck"
-                    required
                     ref={el => {
                       fileInputsRef.current.cancelledCheck = el;
                     }}
@@ -496,7 +587,6 @@ export default function FormPage() {
                   <FileUpload
                     label="Challan Seizure Memo"
                     name="challanSeizureMemo"
-                    required
                     ref={el => {
                       fileInputsRef.current.challanSeizureMemo = el;
                     }}
@@ -541,7 +631,6 @@ export default function FormPage() {
                           <FileUpload
                             label="Hypothecation Clearance Document"
                             name="hypothecationClearanceDoc"
-                            required
                             ref={el => {
                               fileInputsRef.current.hypothecationClearanceDoc = el;
                             }}
@@ -660,7 +749,6 @@ export default function FormPage() {
                       <input
                         type="url"
                         name="vahanRegistrationLink"
-                        required
                         value={vahanLink}
                         onChange={(e) => setVahanLink(e.target.value)}
                         placeholder="Paste your Vahan registration link here"

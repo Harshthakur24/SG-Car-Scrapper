@@ -1,15 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { User } from '@prisma/client'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from "../../components/ui/skeleton"
+import OTPVerification from '../../components/OTPVerification'
 
 
 const SearchIcon = () => (
-    <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+        className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        role="presentation"
+        aria-label="Search"
+    >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
     </svg>
 )
@@ -42,7 +51,7 @@ const LoadingRow = () => (
             <Skeleton className="h-5 w-24" />
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
-            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-5 w-24" />
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
             <Skeleton className="h-5 w-24 ml-auto" />
@@ -50,13 +59,29 @@ const LoadingRow = () => (
     </tr>
 )
 
+// Update type definition to use User type directly
+type SortableFields = keyof User;
+
 export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
-    const [sortField, setSortField] = useState<keyof User>('createdAt')
+    const [sortField, setSortField] = useState<SortableFields>('createdAt')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
     const router = useRouter()
+    const [isFilterOpen, setIsFilterOpen] = useState(false)
+    const filterRef = useRef<HTMLDivElement>(null)
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+                setIsFilterOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const fetchUsers = async () => {
         try {
@@ -77,8 +102,7 @@ export default function AdminPage() {
 
     const filteredUsers = users.filter(user =>
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.phoneNumber.includes(searchTerm)
+        user.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
     const sortedUsers = [...filteredUsers].sort((a, b) => {
@@ -100,7 +124,25 @@ export default function AdminPage() {
         }
     }
 
+    const handleFilterClick = (field: SortableFields, order: 'asc' | 'desc') => {
+        setSortField(field)
+        setSortOrder(order)
+        setIsFilterOpen(false)
+    }
+
+    useEffect(() => {
+        const authStatus = sessionStorage.getItem('adminAuthenticated')
+        setIsAuthenticated(authStatus === 'true')
+
+
+    }, [])
+
+    if (!isAuthenticated) {
+        return <OTPVerification />
+    }
+
     return (
+
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="bg-white rounded-xl shadow-lg border border-gray-100">
@@ -118,13 +160,13 @@ export default function AdminPage() {
                             </h1>
                             <div className="flex items-center space-x-4">
                                 {/* Search with enhanced styling */}
-                                <div className="relative">
+                                <div className="relative text-center">
                                     <input
                                         type="text"
-                                        placeholder="Search users..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-10 pr-4 py-2.5 w-64 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                        placeholder="Search by vehicle number..."
+                                        className="pl-10 pr-4 py-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                     <SearchIcon />
                                 </div>
@@ -141,9 +183,58 @@ export default function AdminPage() {
                                     <RefreshIcon />
                                 </button>
                                 {/* Filter Button with enhanced styling */}
-                                <button className="p-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200">
-                                    <FilterIcon />
-                                </button>
+                                <div className="relative" ref={filterRef}>
+                                    <button
+                                        onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                        className={`p-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200 ${isFilterOpen ? 'bg-gray-50' : ''}`}
+                                    >
+                                        <FilterIcon />
+                                    </button>
+
+                                    {isFilterOpen && (
+                                        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                                            <div className="py-1" role="menu">
+                                                <button
+                                                    onClick={() => handleFilterClick('createdAt', 'desc')}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                >
+                                                    Latest First
+                                                </button>
+                                                <button
+                                                    onClick={() => handleFilterClick('createdAt', 'asc')}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                >
+                                                    Oldest First
+                                                </button>
+                                                <button
+                                                    onClick={() => handleFilterClick('paymentDone', 'desc')}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                >
+                                                    Payment Done
+                                                </button>
+                                                <button
+                                                    onClick={() => handleFilterClick('paymentDone', 'asc')}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                >
+                                                    Payment Not Done
+                                                </button>
+                                                <button
+                                                    onClick={() => handleFilterClick('name', 'asc')}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                >
+                                                    Alphabetical (A-Z)
+                                                </button>
+                                                <button
+                                                    onClick={() => handleFilterClick('name', 'desc')}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                >
+                                                    Alphabetical (Z-A)
+                                                </button>
+
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -166,10 +257,10 @@ export default function AdminPage() {
                                         Contact
                                     </th>
                                     <th
-                                        onClick={() => handleSort('isVerified')}
+                                        onClick={() => handleSort('paymentDone')}
                                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                                     >
-                                        Status
+                                        Payment
                                     </th>
                                     <th
                                         onClick={() => handleSort('createdAt')}
@@ -178,10 +269,10 @@ export default function AdminPage() {
                                         Submitted
                                     </th>
                                     <th
-                                        onClick={() => handleSort('aadharNumber')}
+                                        onClick={() => handleSort('vehicleNumber')}
                                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                                     >
-                                        Aadhar Number
+                                        Vehicle Number
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Actions
@@ -220,30 +311,45 @@ export default function AdminPage() {
                                                 <div className="text-sm text-gray-500">{user.phoneNumber}</div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isVerified
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-yellow-100 text-yellow-800'
+                                                <span className={`px-3 py-1.5 inline-flex items-center text-sm leading-5 font-semibold rounded-full
+                                                    ${user.paymentDone
+                                                        ? 'bg-green-100 text-green-800 border border-green-200'
+                                                        : 'bg-red-100 text-red-800 border border-red-200'
                                                     }`}>
-                                                    {user.isVerified ? 'Verified' : 'Pending'}
+
+                                                    {user.paymentDone ? 'Done' : 'Not Done'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {format(new Date(user.createdAt), 'MMM d, yyyy')}
+                                                {format(new Date(user.createdAt), 'MMM d, yyyy h:mm a')}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">
-                                                    {user.aadharNumber
-                                                        ? user.aadharNumber.replace(/(\d{4})/g, '$1 ').trim()
-                                                        : 'N/A'
-                                                    }
-                                                </div>
+                                                <div className="text-sm font-medium text-gray-900">{user.vehicleNumber}</div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <button
                                                     onClick={() => router.push(`/admin/users/${user.id}`)}
-                                                    className="text-blue-600 hover:text-blue-900 mr-4"
+                                                    className="inline-flex items-center px-4 py-2 rounded-lg
+                                                        bg-blue-50 text-blue-700 font-medium
+                                                        hover:bg-blue-100 active:bg-blue-200
+                                                        border border-blue-200 hover:border-blue-300
+                                                        transition-all duration-200 ease-in-out
+                                                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                                 >
-                                                    View Details
+                                                    <span>View Details</span>
+                                                    <svg
+                                                        className="ml-2 h-4 w-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M9 5l7 7-7 7"
+                                                        />
+                                                    </svg>
                                                 </button>
                                             </td>
                                         </tr>
