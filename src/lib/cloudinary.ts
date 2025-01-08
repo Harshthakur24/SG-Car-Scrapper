@@ -6,37 +6,49 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Add type for Cloudinary response
-type CloudinaryResponse = { secure_url: string };
-
-export async function uploadToCloudinary(base64String: string): Promise<string> {
+export async function uploadToCloudinary(base64String: string) {
   try {
-    // Check if it's a PDF/DOC or image
-    const isPDF = base64String.includes('application/pdf');
-    const isDoc = base64String.includes('application/msword') || 
-                 base64String.includes('application/vnd.openxmlformats-officedocument');
+    // Extract MIME type and base64 data
+    const matches = base64String.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+    
+    if (!matches) {
+      throw new Error('Invalid base64 string format');
+    }
 
-    const uploadOptions = {
-      resource_type: (isPDF || isDoc ? 'raw' : 'auto') as 'raw' | 'auto',
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+    const isPDF = mimeType.includes('pdf');
+
+    console.log('Uploading file:', { mimeType, isPDF });
+
+    const uploadOptions: { 
+      folder: string; 
+      resource_type: "raw" | "image" | "auto" | "video";
+      format?: string;
+    } = {
       folder: 'vehicle-scrap',
-      format: isPDF ? 'pdf' : isDoc ? 'doc' : 'auto'
-    } as const;
+      resource_type: isPDF ? "raw" : "image",
+      format: isPDF ? 'pdf' : undefined,
+    };
 
-    // Upload to Cloudinary
-    const result = await new Promise<CloudinaryResponse>((resolve, reject) => {
-      cloudinary.uploader.upload(
-        base64String,
-        uploadOptions,
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result as CloudinaryResponse);
-        }
-      );
+    const result = await cloudinary.uploader.upload(
+      `data:${mimeType};base64,${base64Data}`,
+      uploadOptions
+    );
+
+    if (!result || !result.secure_url) {
+      throw new Error('Upload failed - no URL returned');
+    }
+
+    console.log('Upload successful:', {
+      type: isPDF ? 'PDF' : 'Image',
+      url: result.secure_url,
+      resourceType: uploadOptions.resource_type
     });
 
     return result.secure_url;
   } catch (error) {
     console.error('Cloudinary upload error:', error);
-    throw new Error('Failed to upload file');
+    throw error;
   }
 } 

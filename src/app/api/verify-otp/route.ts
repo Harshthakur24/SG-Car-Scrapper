@@ -87,9 +87,16 @@ if (method === 'phone') {
                 if (!value) return null;
                 try {
                     console.log(`Uploading ${key}...`);
-                    const url = await uploadToCloudinary(value as string);
-                    console.log(`Successfully uploaded ${key}: ${url}`);
-                    return url;
+
+                    // Check if the value is a base64 string
+                    if (typeof value === 'string' && value.includes('base64')) {
+                        const url = await uploadToCloudinary(value);
+                        console.log(`Successfully uploaded ${key}: ${url}`);
+                        return url;
+                    } else {
+                        console.error(`Invalid file format for ${key}`);
+                        return null;
+                    }
                 } catch (error) {
                     console.error(`Failed to upload ${key}:`, error);
                     return null;
@@ -97,9 +104,10 @@ if (method === 'phone') {
             })
         );
 
-       
+        // Log upload results for debugging
+        console.log('Upload results:', uploadResults);
 
-        // Create user
+        // Create user with uploaded files
         const user = await prisma.user.create({
             data: {
                 name: formData.name,
