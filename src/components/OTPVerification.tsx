@@ -29,7 +29,7 @@ export default function OTPVerification() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''
+                    email: "thakur2004harsh@gmail.com"
                 }),
             })
 

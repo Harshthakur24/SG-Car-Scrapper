@@ -6,7 +6,7 @@ class OTPManager {
         console.log('Setting OTP:', otp);
         this.otp = otp;
         
-        // Clear existing timeout
+       
         if (this.timeout) {
             clearTimeout(this.timeout);
             this.timeout = null;
