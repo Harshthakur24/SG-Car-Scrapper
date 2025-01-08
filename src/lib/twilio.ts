@@ -34,83 +34,23 @@ export async function sendVerificationSMS(phoneNumber: string) {
   }
 }
 
-export async function verifyOTP(phoneNumber: string, code: string): Promise<boolean> {
-    if (!process.env.TWILIO_VERIFY_SERVICE_SID) {
-        console.error('Cannot verify OTP: Missing TWILIO_VERIFY_SERVICE_SID');
-        return false;
+export async function verifyOTP(phoneNumber: string, code: string) {
+  try {
+    let formattedNumber = phoneNumber;
+    if (!phoneNumber.startsWith('+')) {
+      formattedNumber = `+91${phoneNumber.replace(/\D/g, '')}`;
     }
 
-    try {
-        // Ensure proper formatting for Indian numbers
-        let formattedPhone = phoneNumber;
-        if (!phoneNumber.startsWith('+')) {
-            // Remove any non-digit characters
-            const cleaned = phoneNumber.replace(/\D/g, '');
-            // Add +91 prefix if not present
-            formattedPhone = cleaned.startsWith('91') ? `+${cleaned}` : `+91${cleaned}`;
-        }
-        
-        console.log('Attempting to verify OTP:', {
-            originalPhone: phoneNumber,
-            formattedPhone: formattedPhone,
-            code
-        });
+    const verification = await client.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_ID!)
+      .verificationChecks.create({
+        to: formattedNumber,
+        code
+      });
 
-        const verification = await client.verify.v2
-            .services(process.env.TWILIO_VERIFY_SERVICE_SID)
-            .verificationChecks.create({
-                to: formattedPhone,
-                code: code
-            });
-
-        console.log('Twilio verification response:', {
-            status: verification.status,
-            valid: verification.valid,
-            to: verification.to
-        });
-
-        return verification.status === 'approved';
-    } catch (error) {
-        console.error('Twilio verification error:', error);
-        return false;
-    }
-}
-
-export async function sendOTP(phoneNumber: string) {
-    if (!process.env.TWILIO_VERIFY_SERVICE_SID) {
-        throw new Error('Cannot send OTP: Missing TWILIO_VERIFY_SERVICE_SID');
-    }
-
-    try {
-        // Ensure proper formatting for Indian numbers
-        let formattedPhone = phoneNumber;
-        if (!phoneNumber.startsWith('+')) {
-            // Remove any non-digit characters
-            const cleaned = phoneNumber.replace(/\D/g, '');
-            // Add +91 prefix if not present
-            formattedPhone = cleaned.startsWith('91') ? `+${cleaned}` : `+91${cleaned}`;
-        }
-
-        console.log('Attempting to send OTP:', {
-            originalPhone: phoneNumber,
-            formattedPhone: formattedPhone
-        });
-
-        const verification = await client.verify.v2
-            .services(process.env.TWILIO_VERIFY_SERVICE_SID)
-            .verifications.create({
-                to: formattedPhone,
-                channel: 'sms'
-            });
-        
-        console.log('Twilio send OTP response:', {
-            status: verification.status,
-            to: verification.to
-        });
-
-        return verification.status === 'pending';
-    } catch (error) {
-        console.error('Twilio send error:', error);
-        throw error;
-    }
+    return verification.status === 'approved';
+  } catch (error) {
+    console.error('Failed to verify code:', error);
+    return false;
+  }
 } 
