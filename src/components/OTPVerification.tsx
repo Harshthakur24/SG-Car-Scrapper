@@ -52,7 +52,7 @@ export default function OTPVerification() {
         const loadingToast = toast.loading('Verifying...')
 
         try {
-            const response = await fetch('/api/verify-otp', {
+            const response = await fetch('/api/admin/verify-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ otp }),
@@ -67,7 +67,9 @@ export default function OTPVerification() {
             toast.dismiss(loadingToast)
             toast.success('Verification successful!')
             sessionStorage.setItem('adminAuthenticated', 'true')
-            window.location.href = '/admin/users'
+            setTimeout(() => {
+                window.location.reload()
+            }, 1300)
 
         } catch (error) {
             toast.dismiss(loadingToast)
