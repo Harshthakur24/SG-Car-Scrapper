@@ -15,11 +15,11 @@ datasource db {
 }
 
 model User {
-  id                        String   @id @default(cuid())
+  id                        String    @id @default(cuid())
   name                      String
   email                     String
   phoneNumber               String
-  vehicleNumber             String   @unique
+  vehicleNumber             String    @unique
   aadharNumber              String
   adharCard                 String
   panCard                   String
@@ -28,12 +28,15 @@ model User {
   cancelledCheck            String
   challanSeizureMemo        String
   hypothecationClearanceDoc String?
-  isHypothecated            Boolean  @default(false)
-  isRcLost                  Boolean  @default(false)
+  isHypothecated            Boolean   @default(false)
+  isRcLost                  Boolean   @default(false)
   rcLostDeclaration         String?
   vahanRegistrationLink     String?
-  isVerified                Boolean  @default(false)
-  paymentDone               Boolean  @default(false)
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  isVerified                Boolean   @default(false)
+  paymentDone               Boolean   @default(false)
+  paymentTiming             DateTime?
+  paymentOwner              String?
+  paymentDetails            String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 }

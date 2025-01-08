@@ -78,7 +78,12 @@ export async function PUT(
 
     const user = await prisma.user.update({
       where: { id },
-      data: { paymentDone: Boolean(data.paymentDone) },
+      data: { 
+        paymentDone: Boolean(data.paymentDone),
+        paymentTiming: data.paymentDone ? new Date() : null,
+        paymentOwner: data.paymentOwner || null,
+        paymentDetails: data.paymentDetails || null
+      },
     });
 
     return NextResponse.json({ success: true, data: user });

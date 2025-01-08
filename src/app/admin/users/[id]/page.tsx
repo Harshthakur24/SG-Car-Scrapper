@@ -19,13 +19,22 @@ const ArrowLeftIcon = () => (
 interface ConfirmationDialogProps {
     isOpen: boolean
     onClose: () => void
-    onConfirm: () => void
+    onConfirm: (data: { paymentOwner: string; paymentDetails: string }) => void
     isPaymentDone: boolean
     userName: string
 }
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, isPaymentDone, userName }: ConfirmationDialogProps) {
-    if (!isOpen) return null
+    const [paymentOwner, setPaymentOwner] = useState('');
+    const [paymentDetails, setPaymentDetails] = useState('');
+
+    const handleSubmit = () => {
+        onConfirm({ paymentOwner, paymentDetails });
+        setPaymentOwner('');
+        setPaymentDetails('');
+    };
+
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -39,25 +48,51 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, isPaymentDone, userNam
                         </div>
                         <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                             <h3 className="text-lg font-semibold leading-6 text-gray-900">
-                                Confirm Payment Status Update
+                                Confirm Payment Status Update for {userName}
                             </h3>
-                            <div className="mt-2">
-                                <p className="text-sm text-gray-500">
-                                    Are you sure you want to {isPaymentDone ? 'unmark' : 'mark'} the payment as
-                                    {isPaymentDone ? ' not done' : ' done'} for <span className="font-medium text-gray-900">{userName}</span>?
-                                </p>
+                            <div className="mt-4 space-y-4">
+                                {!isPaymentDone && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Payment Owner
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={paymentOwner}
+                                                onChange={(e) => setPaymentOwner(e.target.value)}
+                                                className="mt-1 text-black block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                                                placeholder="Enter payment owner name"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Payment Details (of receiver)
+                                            </label>
+                                            <textarea
+                                                value={paymentDetails}
+                                                onChange={(e) => setPaymentDetails(e.target.value)}
+                                                rows={3}
+                                                className="mt-1 text-black block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                                                placeholder="Enter payment details"
+                                            />
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
                     <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse gap-3">
                         <button
                             type="button"
-                            onClick={onConfirm}
+                            onClick={handleSubmit}
+                            disabled={!isPaymentDone && (!paymentOwner || !paymentDetails)}
                             className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-sm sm:w-auto
                                 ${isPaymentDone
                                     ? 'bg-red-500 hover:bg-red-600'
                                     : 'bg-green-500 hover:bg-green-600'} 
-                                transition-all duration-200`}
+                                transition-all duration-200
+                                disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                             {isPaymentDone ? 'Unmark Payment' : 'Mark as Paid'}
                         </button>
@@ -72,7 +107,7 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, isPaymentDone, userNam
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 export default function UserDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -103,9 +138,9 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
         setIsConfirmationOpen(true)
     }
 
-    const handleConfirmPaymentToggle = async () => {
-        setIsConfirmationOpen(false)
-        setUpdating(true)
+    const handleConfirmPaymentToggle = async (paymentData: { paymentOwner?: string, paymentDetails?: string }) => {
+        setIsConfirmationOpen(false);
+        setUpdating(true);
         try {
             const response = await fetch(`/api/admin/users/${id}`, {
                 method: 'PUT',
@@ -114,33 +149,30 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                 },
                 body: JSON.stringify({
                     paymentDone: !user?.paymentDone,
+                    paymentOwner: paymentData.paymentOwner,
+                    paymentDetails: paymentData.paymentDetails
                 }),
-            })
+            });
 
-            if (!response.ok) throw new Error('Failed to update payment status')
+            if (!response.ok) throw new Error('Failed to update payment status');
 
-            setUser(prev => prev ? { ...prev, paymentDone: !prev.paymentDone } : null)
+            const data = await response.json();
+            setUser(prev => prev ? { ...prev, ...data.data } : null);
 
-            // Simplified toast notification
             toast.success(
                 `Payment ${!user?.paymentDone ? 'marked' : 'unmarked'} as done`,
                 {
                     icon: !user?.paymentDone ? '✅' : '❌',
                     duration: 5000,
-                    style: {
-                        padding: '14px',
-                        borderRadius: '14px',
-                        fontSize: '1rem',
-                    },
                 }
-            )
+            );
         } catch (error) {
-            console.error('Error updating payment status:', error)
-            toast.error('Failed to update payment status')
+            console.error('Error updating payment status:', error);
+            toast.error('Failed to update payment status');
         } finally {
-            setUpdating(false)
+            setUpdating(false);
         }
-    }
+    };
 
     if (loading) {
         return (
