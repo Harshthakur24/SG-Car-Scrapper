@@ -294,6 +294,30 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                     value={user.createdAt ? format(new Date(user.createdAt), 'PPp') : 'N/A'}
                                     icon="📅"
                                 />
+
+                                {/* New Payment Information Items */}
+                                {user.paymentDone && (
+                                    <>
+                                        <InfoItem
+                                            label="Payment Owner"
+                                            value={user.paymentOwner || 'N/A'}
+                                            icon="👤"
+                                        />
+                                        <InfoItem
+                                            label="Payment Details"
+                                            value={user.paymentDetails || 'N/A'}
+                                            icon="💳"
+                                        />
+                                        <InfoItem
+                                            label="Payment Time"
+                                            value={user.paymentTiming
+                                                ? format(new Date(user.paymentTiming), 'PPp')
+                                                : 'N/A'
+                                            }
+                                            icon="⏰"
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
 

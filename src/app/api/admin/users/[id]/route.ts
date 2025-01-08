@@ -29,6 +29,9 @@ export async function GET(
         challanSeizureMemo: true,
         deathCertificate: true,
         hypothecationClearanceDoc: true,
+        paymentTiming: true,
+        paymentOwner: true,
+        paymentDetails: true
       }
     });
 
