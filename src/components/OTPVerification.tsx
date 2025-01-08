@@ -65,7 +65,7 @@ export default function OTPVerification() {
             }
 
             toast.dismiss(loadingToast)
-            toast.success('Verification successful!')
+            toast.success('Verification successful, Welcome Admin!')
             sessionStorage.setItem('adminAuthenticated', 'true')
             setTimeout(() => {
                 window.location.reload()
