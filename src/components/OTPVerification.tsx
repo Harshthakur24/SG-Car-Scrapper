@@ -48,30 +48,30 @@ export default function OTPVerification() {
             return
         }
 
-        toast.loading('Verifying OTP...')
         setLoading(true)
+        const loadingToast = toast.loading('Verifying...')
+
         try {
-            const response = await fetch('/api/admin/verify-otp', {
+            const response = await fetch('/api/verify-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ otp }),
             })
 
             const data = await response.json()
-            if (!response.ok) throw new Error(data.error)
 
-            sessionStorage.setItem('adminAuthenticated', 'true')
-            toast.dismiss()
-            if (data.success) {
-
-                toast.success('Welcome, Admin!', { duration: 2500 })
-                setTimeout(() => {
-                    window.location.reload()
-                }, 1500)
+            if (!response.ok) {
+                throw new Error(data.error || 'Verification failed')
             }
+
+            toast.dismiss(loadingToast)
+            toast.success('Verification successful!')
+            sessionStorage.setItem('adminAuthenticated', 'true')
+            window.location.href = '/admin/users'
+
         } catch (error) {
-            toast.dismiss()
-            toast.error(error instanceof Error ? error.message : 'Invalid OTP')
+            toast.dismiss(loadingToast)
+            toast.error(error instanceof Error ? error.message : 'Verification failed')
         } finally {
             setLoading(false)
         }

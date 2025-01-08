@@ -27,32 +27,38 @@ export async function POST(request: Request) {
         }
 
         // Verify OTP before proceeding
-        if (method === 'phone') {
-            console.log('Starting phone verification process:', {
-                phoneNumber,
-                otp,
-                tempId,
-                otpDataExists: !!otpData
-            });
+        // Verify OTP before proceeding
+if (method === 'phone') {
+    console.log('Starting phone verification process:', {
+        phoneNumber,
+        otp,
+        tempId,
+        otpDataExists: !!otpData
+    });
 
-            if (!process.env.TWILIO_VERIFY_SERVICE_SID) {
-                console.error('Missing TWILIO_VERIFY_SERVICE_SID environment variable');
-                return NextResponse.json({ 
-                    success: false,
-                    error: 'Server configuration error' 
-                }, { status: 500 });
-            }
-            
-            const isValid = await verifyOTP(phoneNumber, otp);
-            console.log('Phone verification result:', { isValid });
+    if (!process.env.TWILIO_VERIFY_SERVICE_SID) {
+        console.error('Missing TWILIO_VERIFY_SERVICE_SID environment variable');
+        return NextResponse.json({ 
+            success: false,
+            error: 'Server configuration error' 
+        }, { status: 500 });
+    }
+    
+    // Format phone number with country code
+    const formattedPhone = phoneNumber.startsWith('+') 
+        ? phoneNumber 
+        : `+91${phoneNumber.replace(/^0+/, '')}`;
+    
+    const isValid = await verifyOTP(formattedPhone, otp);
+    console.log('Phone verification result:', { isValid });
 
-            if (!isValid) {
-                return NextResponse.json({ 
-                    success: false,
-                    error: 'Invalid verification code' 
-                }, { status: 400 });
-            }
-        } else {
+    if (!isValid) {
+        return NextResponse.json({ 
+            success: false,
+            error: 'Invalid verification code' 
+        }, { status: 400 });
+    }
+} else {
             console.log('Starting email verification process:', {
                 email,
                 providedOtp: otp,
