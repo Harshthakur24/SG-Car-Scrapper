@@ -464,8 +464,8 @@ function EnhancedDocumentPreview({ label, url, type }: DocumentPreviewProps) {
     const documentUrl = getDocumentUrl(url);
 
     return (
-        <div className={`rounded-lg border ${getTypeStyles()} p-4 hover:shadow-md transition-all duration-200`}>
-            <div className="flex justify-between items-start mb-3">
+        <div className={`rounded-lg border ${getTypeStyles()} p-3 sm:p-4 hover:shadow-md transition-all duration-200`}>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
                 <span className="text-sm font-medium">{label}</span>
                 <span className="text-xs uppercase">{type}</span>
             </div>

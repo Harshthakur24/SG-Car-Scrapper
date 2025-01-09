@@ -69,7 +69,7 @@ export default function OTPVerification() {
             sessionStorage.setItem('adminAuthenticated', 'true')
             setTimeout(() => {
                 window.location.reload()
-            }, 1300)
+            }, 1500)
 
         } catch (error) {
             toast.dismiss(loadingToast)
