@@ -182,7 +182,7 @@ export const FileUpload = forwardRef<
                                     Drop your file here, or <span className="text-blue-500 hover:text-blue-600">browse</span>
                                 </motion.p>
                                 <p className="text-sm text-gray-500">
-                                    Supports: PDF, Images, & Word documents
+                                    Supports: PDF and Images
                                 </p>
                             </div>
                         </motion.div>
