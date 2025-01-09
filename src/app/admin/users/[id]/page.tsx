@@ -211,22 +211,26 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header Section */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col space-y-4 mb-8">
                     <button
                         onClick={() => router.back()}
-                        className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200 bg-white rounded-lg px-4 py-2 shadow-sm hover:shadow-md"
+                        className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200 
+                            bg-white rounded-lg px-3 py-2 sm:px-4 sm:py-2 shadow-sm hover:shadow-md text-sm sm:text-base w-fit"
                     >
                         <ArrowLeftIcon />
-                        Back to submissions
+                        <span className="hidden sm:inline">Back to submissions</span>
+                        <span className="sm:hidden">Back</span>
                     </button>
-                    <div className="flex items-center space-x-4">
+
+                    <div className="flex flex-col space-y-3">
                         <button
                             onClick={handlePaymentToggle}
                             disabled={updating}
                             className={`
-                                relative overflow-hidden px-6 py-3 rounded-lg font-semibold text-white shadow-lg
-                                transition-all duration-300 transform hover:scale-110 hover:shadow-xl
-                                flex items-center justify-center min-w-[200px] group
+                                relative overflow-hidden px-4 py-2 sm:px-6 sm:py-3 rounded-lg 
+                                font-semibold text-white shadow-lg text-sm sm:text-base
+                                transition-all duration-300 transform hover:scale-105 hover:shadow-xl
+                                flex items-center justify-center group w-full sm:w-auto
                                 ${user?.paymentDone
                                     ? 'bg-gradient-to-r from-red-500 to-red-600'
                                     : 'bg-gradient-to-r from-green-500 to-green-600'
@@ -236,30 +240,36 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                         >
                             <span className="absolute inset-0 w-full h-full bg-white/10 group-hover:scale-105 transition-transform duration-300"></span>
                             {updating ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                             ) : user?.paymentDone ? (
                                 <>
-                                    <XCircle className="h-5 w-5 mr-2" />
-                                    Unmark Payment Done
+                                    <XCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                                    <span className="hidden sm:inline">Unmark Payment Done</span>
+                                    <span className="sm:hidden">Unmark Payment</span>
                                 </>
                             ) : (
                                 <>
-                                    <CheckCircle className="h-5 w-5 mr-2" />
-                                    Mark Payment Done
+                                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                                    <span className="hidden sm:inline">Mark Payment Done</span>
+                                    <span className="sm:hidden">Mark Payment</span>
                                 </>
                             )}
                         </button>
-                        <span className={`px-6 py-3 rounded-full text-base font-semibold ${user?.paymentDone
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                            }`}>
+
+                        <span className={`px-4 py-2 sm:px-6 sm:py-3 rounded-full text-sm sm:text-base 
+                            font-semibold text-center w-full sm:w-auto
+                            ${user?.paymentDone
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                        >
                             {user?.paymentDone ? 'Payment Done' : 'Payment Pending'}
                         </span>
                     </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
                     {/* Left Column - Personal Information */}
                     <div className="lg:col-span-1 space-y-6">
                         {/* User Info Card */}

@@ -133,8 +133,6 @@ export default function AdminPage() {
     useEffect(() => {
         const authStatus = sessionStorage.getItem('adminAuthenticated')
         setIsAuthenticated(authStatus === 'true')
-
-
     }, [])
 
     if (!isAuthenticated) {
@@ -144,12 +142,12 @@ export default function AdminPage() {
     return (
 
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <div className="bg-white rounded-xl shadow-lg border border-gray-100">
                     {/* Header */}
-                    <div className="px-6 py-6 border-b border-gray-200">
-                        <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-                            <h1 className="text-2xl font-bold text-gray-900">
+                    <div className="px-3 sm:px-6 py-4 sm:py-6 border-b border-gray-200">
+                        <div className="flex flex-col space-y-4">
+                            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 text-center sm:text-left">
                                 User Submissions
                                 {loading && (
                                     <div className="inline-flex items-center ml-3">
@@ -158,82 +156,86 @@ export default function AdminPage() {
                                     </div>
                                 )}
                             </h1>
-                            <div className="flex items-center space-x-4">
+
+                            <div className="flex flex-col space-y-3 w-full">
                                 {/* Search with enhanced styling */}
-                                <div className="relative text-center">
+                                <div className="relative w-full">
                                     <input
                                         type="text"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Search by vehicle number..."
-                                        className="pl-10 pr-4 py-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Search vehicle number..."
+                                        className="w-full pl-9 pr-3 py-2 text-sm border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                     <SearchIcon />
                                 </div>
-                                {/* Refresh Button with animation */}
-                                <button
-                                    onClick={() => {
-                                        setLoading(true)
-                                        fetchUsers()
-                                    }}
-                                    className={`p-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200 ${loading ? 'animate-spin' : ''
-                                        }`}
-                                    disabled={loading}
-                                >
-                                    <RefreshIcon />
-                                </button>
-                                {/* Filter Button with enhanced styling */}
-                                <div className="relative" ref={filterRef}>
+
+                                <div className="flex justify-end items-center space-x-2">
+                                    {/* Refresh Button with animation */}
                                     <button
-                                        onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                        className={`p-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200 ${isFilterOpen ? 'bg-gray-50' : ''}`}
+                                        onClick={() => {
+                                            setLoading(true)
+                                            fetchUsers()
+                                        }}
+                                        className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200 ${loading ? 'animate-spin' : ''}`}
+                                        disabled={loading}
                                     >
-                                        <FilterIcon />
+                                        <RefreshIcon />
                                     </button>
 
-                                    {isFilterOpen && (
-                                        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                                            <div className="py-1" role="menu">
-                                                <button
-                                                    onClick={() => handleFilterClick('createdAt', 'desc')}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    Latest First
-                                                </button>
-                                                <button
-                                                    onClick={() => handleFilterClick('createdAt', 'asc')}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    Oldest First
-                                                </button>
-                                                <button
-                                                    onClick={() => handleFilterClick('paymentDone', 'desc')}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    Payment Done
-                                                </button>
-                                                <button
-                                                    onClick={() => handleFilterClick('paymentDone', 'asc')}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    Payment Not Done
-                                                </button>
-                                                <button
-                                                    onClick={() => handleFilterClick('name', 'asc')}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    Alphabetical (A-Z)
-                                                </button>
-                                                <button
-                                                    onClick={() => handleFilterClick('name', 'desc')}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    Alphabetical (Z-A)
-                                                </button>
+                                    {/* Filter Button with enhanced styling */}
+                                    <div className="relative" ref={filterRef}>
+                                        <button
+                                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                            className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200 ${isFilterOpen ? 'bg-gray-50' : ''}`}
+                                        >
+                                            <FilterIcon />
+                                        </button>
 
+                                        {isFilterOpen && (
+                                            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                                                <div className="py-1" role="menu">
+                                                    <button
+                                                        onClick={() => handleFilterClick('createdAt', 'desc')}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        Latest First
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleFilterClick('createdAt', 'asc')}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        Oldest First
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleFilterClick('paymentDone', 'desc')}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        Payment Done
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleFilterClick('paymentDone', 'asc')}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        Payment Not Done
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleFilterClick('name', 'asc')}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        Alphabetical (A-Z)
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleFilterClick('name', 'desc')}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        Alphabetical (Z-A)
+                                                    </button>
+
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

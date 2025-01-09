@@ -11,7 +11,7 @@ export default function OTPVerification() {
         // Check if already authenticated
         const isAuth = sessionStorage.getItem('adminAuthenticated')
         if (isAuth === 'true') {
-
+            // Already authenticated
         }
 
         // Check if OTP was already sent
@@ -20,7 +20,7 @@ export default function OTPVerification() {
             handleSendOTP()
             sessionStorage.setItem('otpSent', 'true')
         }
-    }, []) // Remove router from dependencies
+    }, [])
 
     const handleSendOTP = async () => {
         setLoading(true)
