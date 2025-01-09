@@ -5,145 +5,140 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export async function POST(request: Request) {
     try {
-        // Parse request body
         const body = await request.json();
         
         if (!body) {
             return NextResponse.json({ 
                 success: false, 
-                error: 'Invalid request body' 
+                error: 'Invalid request body',
+                code: 'INVALID_REQUEST'
             }, { status: 400 });
         }
 
         const { email, phoneNumber, otp, tempId, method, formData } = body;
-
-        // Verify OTP from store
         const otpData = global.otpStore?.get(tempId);
-        if (!otpData || otpData.email !== email) {
-            return NextResponse.json({ 
-                success: false,
-                error: 'Invalid verification code' 
-            }, { status: 400 });
-        }
 
-        // Verify OTP before proceeding
-        // Verify OTP before proceeding
-if (method === 'phone') {
-    console.log('Starting phone verification process:', {
-        phoneNumber,
-        otp,
-        tempId,
-        otpDataExists: !!otpData
-    });
-
-    if (!process.env.TWILIO_VERIFY_SERVICE_SID) {
-        console.error('Missing TWILIO_VERIFY_SERVICE_SID environment variable');
-        return NextResponse.json({ 
-            success: false,
-            error: 'Server configuration error' 
-        }, { status: 500 });
-    }
-    
-    // Format phone number with country code
-    const formattedPhone = phoneNumber.startsWith('+') 
-        ? phoneNumber 
-        : `+91${phoneNumber.replace(/^0+/, '')}`;
-    
-    const isValid = await verifyOTP(formattedPhone, otp);
-    console.log('Phone verification result:', { isValid });
-
-    if (!isValid) {
-        return NextResponse.json({ 
-            success: false,
-            error: 'Invalid verification code' 
-        }, { status: 400 });
-    }
-} else {
-            console.log('Starting email verification process:', {
-                email,
-                providedOtp: otp,
-                storedOtp: otpData?.otp,
-                tempId,
-                otpDataExists: !!otpData
-            });
-
-            if (otpData.otp !== otp) {
+        // Process and upload files if not already uploaded
+        if (!otpData?.uploadResults) {
+            try {
+                const uploadResults = await Promise.all(
+                    Object.entries(formData.files || {}).map(async ([key, value]) => {
+                        if (!value) return null;
+                        try {
+                            console.log(`Uploading ${key}...`);
+                            if (typeof value === 'string' && value.includes('base64')) {
+                                const url = await uploadToCloudinary(value);
+                                console.log(`Successfully uploaded ${key}: ${url}`);
+                                return url;
+                            }
+                            return null;
+                        } catch (error) {
+                            console.error(`Failed to upload ${key}:`, error);
+                            return null;
+                        }
+                    })
+                );
+                
+                // Store upload results in OTP data
+                if (otpData) {
+                    otpData.uploadResults = uploadResults;
+                    global.otpStore?.set(tempId, otpData);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
                 return NextResponse.json({ 
                     success: false,
-                    error: 'Invalid verification code' 
-                }, { status: 400 });
+                    error: 'Failed to upload files',
+                    code: 'UPLOAD_ERROR'
+                }, { status: 500 });
             }
         }
 
-        // Clean up OTP after successful verification
-        global.otpStore?.delete(tempId);
+        // Verify OTP
+        if (!otpData) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'Verification session expired. Please request a new code.',
+                code: 'SESSION_EXPIRED'
+            }, { status: 400 });
+        }
 
-        // Log received data
-        console.log('Received form data:', formData);
+        if (otpData.email !== email) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'Invalid verification session',
+                code: 'INVALID_SESSION'
+            }, { status: 400 });
+        }
 
-        // Upload files
-        const uploadResults = await Promise.all(
-            Object.entries(formData.files || {}).map(async ([key, value]) => {
-                if (!value) return null;
-                try {
-                    console.log(`Uploading ${key}...`);
+        let isValidOTP = false;
+        if (method === 'phone') {
+            const formattedPhone = phoneNumber.startsWith('+') 
+                ? phoneNumber 
+                : `+91${phoneNumber.replace(/^0+/, '')}`;
+            isValidOTP = await verifyOTP(formattedPhone, otp);
+        } else {
+            isValidOTP = otpData.otp === otp;
+        }
 
-                    // Check if the value is a base64 string
-                    if (typeof value === 'string' && value.includes('base64')) {
-                        const url = await uploadToCloudinary(value);
-                        console.log(`Successfully uploaded ${key}: ${url}`);
-                        return url;
-                    } else {
-                        console.error(`Invalid file format for ${key}`);
-                        return null;
-                    }
-                } catch (error) {
-                    console.error(`Failed to upload ${key}:`, error);
-                    return null;
-                }
-            })
-        );
+        if (!isValidOTP) {
+            return NextResponse.json({ 
+                success: false,
+                error: 'Invalid verification code',
+                code: 'INVALID_OTP'
+            }, { status: 400 });
+        }
 
-        // Log upload results for debugging
-        console.log('Upload results:', uploadResults);
+        // Create user with stored upload results
+        try {
+            const uploadResults = otpData.uploadResults || [];
+            const user = await prisma.user.create({
+                data: {
+                    name: formData.name,
+                    email: formData.email,
+                    phoneNumber: formData.phoneNumber,
+                    vehicleNumber: formData.vehicleNumber?.toString().toUpperCase() || '',
+                    aadharNumber: formData.aadharNumber?.replace(/\D/g, '') || '',
+                    adharCard: uploadResults[0] || '',
+                    panCard: uploadResults[1] || '',
+                    registrationCertificate: uploadResults[2] || '',
+                    cancelledCheck: uploadResults[3] || '',
+                    challanSeizureMemo: uploadResults[4] || '',
+                    deathCertificate: uploadResults[5] || null,
+                    hypothecationClearanceDoc: uploadResults[6] || null,
+                    isHypothecated: Boolean(formData.isHypothecated),
+                    isRcLost: Boolean(formData.isRcLost),
+                    rcLostDeclaration: formData.rcLostDeclaration || '',
+                    vahanRegistrationLink: formData.vahanRegistrationLink || '',
+                    isVerified: true,
+                    paymentDone: false
+                },
+            });
 
-        // Create user with uploaded files
-        const user = await prisma.user.create({
-            data: {
-                name: formData.name,
-                email: formData.email,
-                phoneNumber: formData.phoneNumber,
-                vehicleNumber: formData.vehicleNumber?.toString().toUpperCase() || '',
-                aadharNumber: formData.aadharNumber?.replace(/\D/g, '') || '',
-                adharCard: uploadResults[0] || '',
-                panCard: uploadResults[1] || '',
-                registrationCertificate: uploadResults[2] || '',
-                cancelledCheck: uploadResults[3] || '',
-                challanSeizureMemo: uploadResults[4] || '',
-                deathCertificate: uploadResults[5] || null,
-                hypothecationClearanceDoc: uploadResults[6] || null,
-                isHypothecated: Boolean(formData.isHypothecated),
-                isRcLost: Boolean(formData.isRcLost),
-                rcLostDeclaration: formData.rcLostDeclaration || '',
-                vahanRegistrationLink: formData.vahanRegistrationLink || '',
-                isVerified: true,
-                paymentDone: false
-            },
-        });
+            // Clean up OTP data after successful verification and user creation
+            global.otpStore?.delete(tempId);
 
-        console.log('Created user:', user);
+            return NextResponse.json({ 
+                success: true,
+                userId: user.id,
+                message: 'Verification successful'
+            });
 
-        return NextResponse.json({ 
-            success: true,
-            userId: user.id,
-            message: 'Verification successful'
-        });
+        } catch (error) {
+            console.error('Data processing error:', error);
+            return NextResponse.json({ 
+                success: false,
+                error: 'Failed to process submission',
+                code: 'PROCESSING_ERROR'
+            }, { status: 500 });
+        }
 
     } catch (error) {
         console.error('API Error:', error);
         return NextResponse.json({ 
             success: false,
-            error: 'Failed to process request' 
+            error: 'Failed to process request',
+            code: 'SERVER_ERROR'
         }, { status: 500 });
     }
 } 

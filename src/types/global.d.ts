@@ -7,6 +7,7 @@ declare global {
     expires: Date;
     attempts: number;
     verified: boolean;
+    uploadResults?: (string | null)[];
   }>;
 }
 

@@ -5,7 +5,7 @@ class OTPManager {
 
     static setOTP(otp: string | null) {
         console.log('Setting OTP:', otp);
-        this.clearOTP(); // Clear any existing OTP and timeout
+        this.clearOTP(); 
         
         this.otp = otp;
         
