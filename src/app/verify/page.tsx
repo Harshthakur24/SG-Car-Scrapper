@@ -243,7 +243,7 @@ function VerifyContent() {
                 </motion.p>
 
                 <form onSubmit={handleVerify} className="space-y-8">
-                    <div className="flex justify-center gap-3">
+                    <div className="flex justify-center gap-2 sm:gap-3">
                         {[...Array(6)].map((_, index) => (
                             <motion.div
                                 key={index}
@@ -256,16 +256,20 @@ function VerifyContent() {
                                     maxLength={1}
                                     value={otp[index] || ''}
                                     onChange={(e) => {
-                                        const newOtp = [...otp];
-                                        newOtp[index] = e.target.value.slice(-1).replace(/\D/g, '');
-                                        setOtp(newOtp.join(''));
+                                        const value = e.target.value.slice(-1);
+                                        // Only proceed if the input is a number
+                                        if (/^\d*$/.test(value)) {
+                                            const newOtp = [...otp];
+                                            newOtp[index] = value;
+                                            setOtp(newOtp.join(''));
 
-                                        // Move to next input
-                                        if (e.target.value && index < 5) {
-                                            const target = e.target as HTMLInputElement;
-                                            const inputs = target.parentElement?.parentElement?.querySelectorAll('input');
-                                            if (inputs && inputs[index + 1]) {
-                                                inputs[index + 1].focus();
+                                            // Move to next input only if a number was entered
+                                            if (value && index < 5) {
+                                                const target = e.target as HTMLInputElement;
+                                                const inputs = target.parentElement?.parentElement?.querySelectorAll('input');
+                                                if (inputs && inputs[index + 1]) {
+                                                    inputs[index + 1].focus();
+                                                }
                                             }
                                         }
                                     }}
@@ -279,9 +283,10 @@ function VerifyContent() {
                                             }
                                         }
                                     }}
-                                    className="w-12 h-14 text-center text-2xl font-semibold border-2 border-gray-300 rounded-lg 
-                                             focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white shadow-sm
-                                             transition-all duration-200 text-black"
+                                    className="w-8 sm:w-12 h-10 sm:h-14 text-center text-lg sm:text-2xl font-semibold 
+                                             border-2 border-gray-300 rounded-lg 
+                                             focus:border-blue-500 focus:ring-2 focus:ring-blue-200 
+                                             bg-white shadow-sm transition-all duration-200 text-black"
                                 />
                             </motion.div>
                         ))}

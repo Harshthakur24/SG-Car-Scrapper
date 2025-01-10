@@ -146,8 +146,9 @@ export default function AdminPage() {
                 <div className="bg-white rounded-xl shadow-lg border border-gray-100">
                     {/* Header */}
                     <div className="px-3 sm:px-6 py-4 sm:py-6 border-b border-gray-200">
-                        <div className="flex flex-col space-y-4">
-                            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 text-center sm:text-left">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 sm:px-6 py-4">
+                            {/* Title and Loading State */}
+                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 w-full sm:w-auto">
                                 User Submissions
                                 {loading && (
                                     <div className="inline-flex items-center ml-3">
@@ -157,37 +158,45 @@ export default function AdminPage() {
                                 )}
                             </h1>
 
-                            <div className="flex flex-col space-y-3 w-full">
-                                {/* Search with enhanced styling */}
-                                <div className="relative w-full">
+                            {/* Search and Controls Container */}
+                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                {/* Search Input */}
+                                <div className="relative w-full sm:w-64 md:w-80">
                                     <input
                                         type="text"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         placeholder="Search vehicle number..."
-                                        className="w-full pl-9 pr-3 py-2 text-sm border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        className="w-full pl-9 pr-3 py-2 text-sm border text-black border-gray-300 
+                                            rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                            bg-white shadow-sm"
                                     />
                                     <SearchIcon />
                                 </div>
 
-                                <div className="flex justify-end items-center space-x-2">
-                                    {/* Refresh Button with animation */}
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-2 self-end sm:self-auto">
+                                    {/* Refresh Button */}
                                     <button
                                         onClick={() => {
                                             setLoading(true)
                                             fetchUsers()
                                         }}
-                                        className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200 ${loading ? 'animate-spin' : ''}`}
                                         disabled={loading}
+                                        className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 
+                                            transition-all duration-200 bg-white shadow-sm
+                                            ${loading ? 'animate-spin' : ''}`}
                                     >
                                         <RefreshIcon />
                                     </button>
 
-                                    {/* Filter Button with enhanced styling */}
+                                    {/* Filter Button */}
                                     <div className="relative" ref={filterRef}>
                                         <button
                                             onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                            className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200 ${isFilterOpen ? 'bg-gray-50' : ''}`}
+                                            className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 
+                                                transition-all duration-200 bg-white shadow-sm
+                                                ${isFilterOpen ? 'bg-gray-50' : ''}`}
                                         >
                                             <FilterIcon />
                                         </button>

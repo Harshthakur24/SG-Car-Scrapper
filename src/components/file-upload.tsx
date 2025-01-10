@@ -118,12 +118,12 @@ export const FileUpload = forwardRef<
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="flex items-center justify-between p-4 bg-white rounded-lg border border-green-100 shadow-sm"
+                            className="flex items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-green-100 shadow-sm"
                         >
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-50 rounded-lg">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                                <div className="p-2 bg-green-50 rounded-lg shrink-0">
                                     <motion.svg
-                                        className="w-6 h-6 text-green-600"
+                                        className="w-5 h-5 sm:w-6 sm:h-6 text-green-600"
                                         fill="currentColor"
                                         viewBox="0 0 24 24"
                                         initial={{ scale: 0 }}
@@ -133,9 +133,13 @@ export const FileUpload = forwardRef<
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
                                     </motion.svg>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">{file.name}</p>
-                                    <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(2)} KB</p>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium text-gray-700 truncate">
+                                        {file.name}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        {(file.size / 1024).toFixed(2)} KB
+                                    </p>
                                 </div>
                             </div>
                             <motion.button
@@ -143,9 +147,14 @@ export const FileUpload = forwardRef<
                                 whileTap={{ scale: 0.9 }}
                                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
                                 onClick={handleRemoveFile}
-                                className="p-2 hover:bg-red-50 rounded-full group"
+                                className="p-1.5 sm:p-2 hover:bg-red-50 rounded-full group shrink-0 ml-2"
                             >
-                                <svg className="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg
+                                    className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-red-500 transition-colors"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </motion.button>
