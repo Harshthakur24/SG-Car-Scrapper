@@ -222,7 +222,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                         <span className="sm:hidden">Back</span>
                     </button>
 
-                    <div className="flex flex-col space-y-3">
+                    <div className="flex flex-row sm:flex-row sm:items-center sm:justify-end space-x-4 space-y-3 sm:space-y-0 sm:space-x-4 self-end">
                         <button
                             onClick={handlePaymentToggle}
                             disabled={updating}
@@ -230,7 +230,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                 relative overflow-hidden px-4 py-2 sm:px-6 sm:py-3 rounded-lg 
                                 font-semibold text-white shadow-lg text-sm sm:text-base
                                 transition-all duration-300 transform hover:scale-105 hover:shadow-xl
-                                flex items-center justify-center group w-full sm:w-auto
+                                flex items-center justify-center group w-fit
                                 ${user?.paymentDone
                                     ? 'bg-gradient-to-r from-red-500 to-red-600'
                                     : 'bg-gradient-to-r from-green-500 to-green-600'
@@ -257,7 +257,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                         </button>
 
                         <span className={`px-4 py-2 sm:px-6 sm:py-3 rounded-full text-sm sm:text-base 
-                            font-semibold text-center w-full sm:w-auto
+                            font-semibold text-center w-fit
                             ${user?.paymentDone
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
