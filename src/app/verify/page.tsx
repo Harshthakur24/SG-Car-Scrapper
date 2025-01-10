@@ -111,7 +111,21 @@ function VerifyContent() {
 
             toast.dismiss(loadingToast);
             toast.success('Verification successful!');
+
+            // Clear all related data
             localStorage.removeItem('pendingBasicData');
+            localStorage.removeItem('otpSent');
+            localStorage.removeItem('lastResendAttempt');
+
+            // Clear file chunks
+            fileKeys.forEach(key => {
+                const chunks = parseInt(localStorage.getItem(`file_${key}_chunks`) || '0');
+                for (let i = 0; i < chunks; i++) {
+                    localStorage.removeItem(`file_${key}_${i}`);
+                }
+                localStorage.removeItem(`file_${key}_chunks`);
+            });
+
             router.push('/success');
 
         } catch (error) {

@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString()
         console.log('Generated OTP:', otp)
-        OTPManager.setOTP(otp) // OTPManager handles the timeout internally
+        OTPManager.setOTP(otp) 
 
         await resend.emails.send({
             from: 'onboarding@resend.dev',
