@@ -400,7 +400,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                         status={user.isRcLost}
                                         label={user.isRcLost ? "RC Lost" : "RC Available"}
                                     />
-                                    <StatusCard
+                                    <StatusCardforHypothecation
                                         title="Hypothecation Status"
                                         status={(user.hypothecationClearanceDoc) ? true : false}
                                         label={user.hypothecationClearanceDoc ? "Hypothecated" : "Not Hypothecated"}
@@ -519,4 +519,19 @@ function StatusCard({ title, status, label }: StatusCardProps) {
             </div>
         </div>
     );
-} 
+}
+function StatusCardforHypothecation({ title, status, label }: StatusCardProps) {
+    return (
+        <div className={`p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-md
+            ${status
+                ? 'bg-green-50 border-green-200 hover:border-green-300'
+                : 'bg-red-50 border-red-200 hover:border-red-300'
+            }`}>
+            <h3 className="text-base font-semibold text-gray-900 mb-3">{title}</h3>
+            <div className="flex items-center space-x-3">
+                <span className={`flex-shrink-0 w-3 h-3 rounded-full ${status ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <span className="text-gray-900 font-medium">{label}</span>
+            </div>
+        </div>
+    );
+}
