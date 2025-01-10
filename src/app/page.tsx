@@ -166,7 +166,7 @@ export default function FormPage() {
       const basicData = {
         ...formJson,
         isRcLost,
-        isHypothecationCleared,
+        isHypothecated: isHypothecationCleared === false,
         vahanRegistrationLink: vahanLink
       };
 
@@ -424,6 +424,7 @@ export default function FormPage() {
                     <input
                       type="tel"
                       name="phoneNumber"
+                      required
                       className={cn(
                         "w-full px-4 py-2 rounded-lg border bg-gray-50 text-gray-900 transition-all",
                         errors.phoneNumber
@@ -691,9 +692,10 @@ export default function FormPage() {
                             <input
                               type="checkbox"
                               id="rcLostConfirm"
+                              required
                               className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                             />
-                            <label htmlFor="rcLostConfirm" className="text-sm text-gray-600">
+                            <label htmlFor="rcLostConfirm" className="text-sm text-gray-600" >
                               I confirm this declaration is true and accurate
                             </label>
                           </div>
