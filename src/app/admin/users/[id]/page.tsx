@@ -402,8 +402,8 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                     />
                                     <StatusCard
                                         title="Hypothecation Status"
-                                        status={user.isHypothecated}
-                                        label={user.isHypothecated ? "Hypothecated" : "Not Hypothecated"}
+                                        status={(user.hypothecationClearanceDoc) ? true : false}
+                                        label={user.hypothecationClearanceDoc ? "Hypothecated" : "Not Hypothecated"}
                                     />
                                 </div>
                                 {user.isRcLost && user.rcLostDeclaration && (

@@ -92,6 +92,7 @@ export async function POST(request: Request) {
         // Create user with stored upload results
         try {
             const uploadResults = otpData.uploadResults || [];
+            const hasHypothecationDoc = Boolean(uploadResults[6]); 
             const user = await prisma.user.create({
                 data: {
                     name: formData.name,
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
                     challanSeizureMemo: uploadResults[4] || '',
                     deathCertificate: uploadResults[5] || null,
                     hypothecationClearanceDoc: uploadResults[6] || null,
-                    isHypothecated: Boolean(formData.isHypothecated),
+                    isHypothecated: hasHypothecationDoc,
                     isRcLost: Boolean(formData.isRcLost),
                     rcLostDeclaration: formData.rcLostDeclaration || '',
                     vahanRegistrationLink: formData.vahanRegistrationLink || '',

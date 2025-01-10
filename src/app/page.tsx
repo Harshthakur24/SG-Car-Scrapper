@@ -166,7 +166,7 @@ export default function FormPage() {
       const basicData = {
         ...formJson,
         isRcLost,
-        isHypothecated: isHypothecationCleared === false,
+        isHypothecated: isHypothecationCleared,
         vahanRegistrationLink: vahanLink
       };
 
