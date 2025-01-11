@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { User } from '@prisma/client'
 import { format } from 'date-fns'
+import { Loader2 } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from "../../components/ui/skeleton"
@@ -60,7 +61,12 @@ const LoadingRow = () => (
 // Update type definition to use User type directly
 type SortableFields = keyof User;
 
-
+// Add loading screen component
+const LoadingScreen = () => (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-[#004a7c]" />
+    </div>
+)
 
 export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([])
@@ -72,6 +78,7 @@ export default function AdminPage() {
     const [isFilterOpen, setIsFilterOpen] = useState(false)
     const filterRef = useRef<HTMLDivElement>(null)
     const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const [isAuthenticating, setIsAuthenticating] = useState(true)
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -135,28 +142,34 @@ export default function AdminPage() {
         setIsAuthenticated(authStatus === 'true')
     }, [])
 
-
     useEffect(() => {
         const checkAuth = async () => {
+            setIsAuthenticating(true)
             try {
                 const response = await fetch('/api/admin/auth/check')
                 const data = await response.json()
 
                 if (!data.authenticated) {
-                    router.push('/admin/verify') // Redirect to dedicated verify page
+                    router.push('/admin/verify')
                     return
                 }
                 setIsAuthenticated(true)
             } catch (error) {
                 router.push('/admin/verify')
+            } finally {
+                setIsAuthenticating(false)
             }
         }
 
         checkAuth()
     }, [router])
 
+    if (isAuthenticating) {
+        return <LoadingScreen />
+    }
+
     if (!isAuthenticated) {
-        return null // Return null while redirecting
+        return null
     }
 
     return (
