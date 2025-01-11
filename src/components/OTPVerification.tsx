@@ -42,6 +42,10 @@ export default function OTPVerification() {
             })
 
             if (!response.ok) throw new Error('Failed to send OTP')
+            toast.success('OTP sent to admin!', {
+                duration: 4000,
+                icon: '📧'
+            })
         } catch (error) {
             toast.error('Failed to send OTP')
         } finally {
