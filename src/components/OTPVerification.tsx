@@ -32,12 +32,14 @@ export default function OTPVerification() {
 
     const handleSendOTP = async () => {
         setLoading(true)
+        const adminEmail = "thakur2004harsh@gmail.com"
+
         try {
             const response = await fetch('/api/admin/send-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: process.env.NEXT_PUBLIC_ADMIN_EMAIL
+                    email: adminEmail
                 }),
             })
 
@@ -49,7 +51,7 @@ export default function OTPVerification() {
 
         } catch (error) {
             console.error('Send OTP error:', error)
-            throw error // Re-throw to be caught by the useEffect
+            throw error
         } finally {
             setLoading(false)
         }
