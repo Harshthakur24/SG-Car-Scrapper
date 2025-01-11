@@ -72,21 +72,25 @@ export default function OTPVerification() {
             })
 
             const data = await response.json()
-            if (!response.ok) throw new Error(data.error)
+            if (!response.ok) {
+                if (data.error?.toLowerCase().includes('invalid otp')) {
+                    throw new Error('Invalid OTP. Please try again.')
+                }
+                throw new Error(data.error)
+            }
 
-            // Set the token in a cookie
             await fetch('/api/admin/set-auth-cookie', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: data.token }),
             })
 
-            toast.success('Verification successful. Welcome admin!', { duration: 1500 })
+            toast.success('Welcome admin!', { duration: 1500 })
             setTimeout(() => {
                 router.push('/admin')
             }, 1500)
         } catch (error) {
-            toast.error('Verification failed')
+            toast.error(error instanceof Error ? error.message : 'Verification failed')
         } finally {
             setLoading(false)
         }
