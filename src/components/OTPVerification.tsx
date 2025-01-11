@@ -23,9 +23,9 @@ export default function OTPVerification() {
                     })
                     setOtpSent(true)
                 })
-                .catch(() => {
+                .catch((error) => {
                     toast.dismiss(loadingToast)
-                    toast.error('Failed to send OTP')
+                    toast.error(error.message || 'Failed to send OTP')
                 })
         }
     }, [otpSent])
@@ -41,13 +41,15 @@ export default function OTPVerification() {
                 }),
             })
 
-            if (!response.ok) throw new Error('Failed to send OTP')
-            toast.success('OTP sent to admin!', {
-                duration: 4000,
-                icon: '📧'
-            })
+            const data = await response.json()
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to send OTP')
+            }
+            return true
+
         } catch (error) {
-            toast.error('Failed to send OTP')
+            console.error('Send OTP error:', error)
+            throw error // Re-throw to be caught by the useEffect
         } finally {
             setLoading(false)
         }
