@@ -1,26 +1,58 @@
+import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import OTPManager from '@/lib/otpState'
+import { sign } from 'jsonwebtoken'
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
     try {
-        const { otp } = await request.json()
-        console.log('Verifying OTP:', { receivedOTP: otp, storedOTP: OTPManager.getOTP() })
+        const { email, otp } = await req.json()
 
-        if (!OTPManager.getOTP()) {
-            console.log('OTP expired or not found')
-            return NextResponse.json({ error: 'OTP has expired. Please request a new one.' }, { status: 400 })
+        // Find the latest unused OTP for this email
+        const otpRecord = await prisma.adminOTP.findFirst({
+            where: {
+                email,
+                otp,
+                isUsed: false,
+                expiresAt: {
+                    gt: new Date()
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        })
+
+        if (!otpRecord) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid or expired OTP' },
+                { status: 400 }
+            )
         }
 
-        if (otp !== OTPManager.getOTP()) {
-            console.log('OTP mismatch')
-            return NextResponse.json({ error: 'Invalid OTP' }, { status: 400 })
-        }
+        // Mark OTP as used
+        await prisma.adminOTP.update({
+            where: { id: otpRecord.id },
+            data: { isUsed: true }
+        })
 
-        console.log('OTP verified successfully')
-        OTPManager.clearOTP()
-        return NextResponse.json({ success: true })
+        // Generate JWT token
+        const token = sign(
+            { email, role: 'admin' },
+            process.env.JWT_SECRET || 'fallback-secret',
+            { expiresIn: '24h' }
+        )
+
+        return NextResponse.json({ 
+            success: true,
+            token
+        })
+
     } catch (error) {
-        console.error('Error verifying OTP:', error)
-        return NextResponse.json({ error: 'Failed to verify OTP' }, { status: 500 })
+        console.error('Verify OTP error:', error)
+        return NextResponse.json({ 
+            success: false, 
+            error: 'Verification failed' 
+        }, { 
+            status: 500 
+        })
     }
 } 

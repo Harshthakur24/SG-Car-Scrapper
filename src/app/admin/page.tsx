@@ -6,8 +6,6 @@ import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from "../../components/ui/skeleton"
-import OTPVerification from '../../components/OTPVerification'
-
 
 const SearchIcon = () => (
     <svg
@@ -61,6 +59,8 @@ const LoadingRow = () => (
 
 // Update type definition to use User type directly
 type SortableFields = keyof User;
+
+
 
 export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([])
@@ -135,12 +135,31 @@ export default function AdminPage() {
         setIsAuthenticated(authStatus === 'true')
     }, [])
 
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const response = await fetch('/api/admin/auth/check')
+                const data = await response.json()
+
+                if (!data.authenticated) {
+                    router.push('/admin/verify') // Redirect to dedicated verify page
+                    return
+                }
+                setIsAuthenticated(true)
+            } catch (error) {
+                router.push('/admin/verify')
+            }
+        }
+
+        checkAuth()
+    }, [router])
+
     if (!isAuthenticated) {
-        return <OTPVerification />
+        return null // Return null while redirecting
     }
 
     return (
-
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
             <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <div className="bg-white rounded-xl shadow-lg border border-gray-100">
@@ -168,8 +187,8 @@ export default function AdminPage() {
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         placeholder="Search vehicle number..."
                                         className="w-full pl-9 pr-3 py-2 text-sm border text-black border-gray-300 
-                                            rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                            bg-white shadow-sm"
+                                        rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                        bg-white shadow-sm"
                                     />
                                     <SearchIcon />
                                 </div>
@@ -184,8 +203,8 @@ export default function AdminPage() {
                                         }}
                                         disabled={loading}
                                         className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 
-                                            transition-all duration-200 bg-white shadow-sm
-                                            ${loading ? 'animate-spin' : ''}`}
+                                        transition-all duration-200 bg-white shadow-sm
+                                        ${loading ? 'animate-spin' : ''}`}
                                     >
                                         <RefreshIcon />
                                     </button>
@@ -195,8 +214,8 @@ export default function AdminPage() {
                                         <button
                                             onClick={() => setIsFilterOpen(!isFilterOpen)}
                                             className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 
-                                                transition-all duration-200 bg-white shadow-sm
-                                                ${isFilterOpen ? 'bg-gray-50' : ''}`}
+                                            transition-all duration-200 bg-white shadow-sm
+                                            ${isFilterOpen ? 'bg-gray-50' : ''}`}
                                         >
                                             <FilterIcon />
                                         </button>
@@ -323,7 +342,7 @@ export default function AdminPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`px-3 py-1.5 inline-flex items-center text-sm leading-5 font-semibold rounded-full
-                                                    ${user.paymentDone
+                                                ${user.paymentDone
                                                         ? 'bg-green-100 text-green-800 border border-green-200'
                                                         : 'bg-red-100 text-red-800 border border-red-200'
                                                     }`}>
@@ -341,11 +360,11 @@ export default function AdminPage() {
                                                 <button
                                                     onClick={() => router.push(`/admin/users/${user.id}`)}
                                                     className="inline-flex items-center px-4 py-2 rounded-lg
-                                                        bg-blue-50 text-blue-700 font-medium
-                                                        hover:bg-blue-100 active:bg-blue-200
-                                                        border border-blue-200 hover:border-blue-300
-                                                        transition-all duration-200 ease-in-out
-                                                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                                    bg-blue-50 text-blue-700 font-medium
+                                                    hover:bg-blue-100 active:bg-blue-200
+                                                    border border-blue-200 hover:border-blue-300
+                                                    transition-all duration-200 ease-in-out
+                                                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                                 >
                                                     <span>View Details</span>
                                                     <svg

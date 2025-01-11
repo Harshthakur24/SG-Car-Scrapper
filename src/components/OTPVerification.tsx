@@ -2,25 +2,33 @@
 
 import { useState, useEffect } from 'react'
 import { toast, Toaster } from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
 
 export default function OTPVerification() {
     const [otp, setOtp] = useState('')
     const [loading, setLoading] = useState(false)
+    const [otpSent, setOtpSent] = useState(false)
+    const router = useRouter()
 
     useEffect(() => {
-        // Check if already authenticated
-        const isAuth = sessionStorage.getItem('adminAuthenticated')
-        if (isAuth === 'true') {
-            // Already authenticated
-        }
-
-        // Check if OTP was already sent
-        const otpSent = sessionStorage.getItem('otpSent')
+        // Only send OTP if it hasn't been sent yet
         if (!otpSent) {
+            const loadingToast = toast.loading('Sending OTP to admin...')
             handleSendOTP()
-            sessionStorage.setItem('otpSent', 'true')
+                .then(() => {
+                    toast.dismiss(loadingToast)
+                    toast.success('OTP sent to admin!', {
+                        duration: 4000,
+                        icon: '📧'
+                    })
+                    setOtpSent(true)
+                })
+                .catch(() => {
+                    toast.dismiss(loadingToast)
+                    toast.error('Failed to send OTP')
+                })
         }
-    }, [])
+    }, [otpSent])
 
     const handleSendOTP = async () => {
         setLoading(true)
@@ -29,12 +37,15 @@ export default function OTPVerification() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: "thakur2004harsh@gmail.com"
+                    email: process.env.NEXT_PUBLIC_ADMIN_EMAIL
                 }),
             })
 
             if (!response.ok) throw new Error('Failed to send OTP')
-            toast.success('OTP sent to admin email!')
+            toast.success('OTP sent to admin!', {
+                duration: 4000,
+                icon: '📧'
+            })
         } catch (error) {
             toast.error('Failed to send OTP')
         } finally {
@@ -42,88 +53,71 @@ export default function OTPVerification() {
         }
     }
 
-    const handleVerifyOTP = async () => {
-        if (otp.length !== 6) {
-            toast.error('Please enter a valid 6-digit OTP')
-            return
-        }
-
+    const handleVerify = async (e: React.FormEvent) => {
+        e.preventDefault()
         setLoading(true)
-        const loadingToast = toast.loading('Verifying...')
 
         try {
             const response = await fetch('/api/admin/verify-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ otp }),
+                body: JSON.stringify({
+                    email: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
+                    otp
+                }),
             })
 
             const data = await response.json()
+            if (!response.ok) throw new Error(data.error)
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Verification failed')
-            }
+            // Set the token in a cookie
+            await fetch('/api/admin/set-auth-cookie', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: data.token }),
+            })
 
-            toast.dismiss(loadingToast)
-            toast.success('Verification successful, Welcome Admin!')
-            sessionStorage.setItem('adminAuthenticated', 'true')
+            toast.success('Verification successful. Welcome admin!', { duration: 1500 })
             setTimeout(() => {
-                window.location.reload()
+                router.push('/admin')
             }, 1500)
-
         } catch (error) {
-            toast.dismiss(loadingToast)
-            toast.error(error instanceof Error ? error.message : 'Verification failed')
+            toast.error('Verification failed')
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <Toaster position="top-center" />
-            <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
-                <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900">Admin Authentication</h2>
-                    <p className="text-gray-600 mt-2">Please verify your identity to access the admin panel</p>
-                    <div className="mt-4 bg-blue-50 p-3 rounded-lg">
-                        <p className="text-blue-800 text-sm">
-                            An OTP has been sent to <strong>Admin&apos;s Email</strong>
-                        </p>
-                    </div>
-                </div>
-
-                <div className="space-y-3">
-                    <div>
-                        <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
-                            Enter OTP
-                        </label>
-                        <input
-                            type="text"
-                            id="otp"
-                            maxLength={6}
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                            className="w-full px-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Enter 6-digit OTP"
-                        />
-                    </div>
+            <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
+                <h2 className="text-center text-3xl font-bold text-gray-900">Admin Verification</h2>
+                <form onSubmit={handleVerify} className="mt-8 space-y-6">
+                    <input
+                        type="text"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Enter 6-digit OTP"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        maxLength={6}
+                    />
                     <button
-                        onClick={handleVerifyOTP}
-                        disabled={loading}
-                        className="w-full py-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                        type="submit"
+                        disabled={loading || otp.length !== 6}
+                        className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                     >
                         {loading ? 'Verifying...' : 'Verify OTP'}
                     </button>
-                    <button
-                        onClick={handleSendOTP}
-                        disabled={loading}
-                        className="w-full py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
-                    >
-                        {loading ? 'Sending...' : 'Resend OTP'}
-                    </button>
-                </div>
+                </form>
+                <button
+                    onClick={handleSendOTP}
+                    disabled={loading}
+                    className="w-full py-2 text-blue-600 hover:text-blue-800"
+                >
+                    Resend OTP
+                </button>
             </div>
         </div>
     )
-} 
+}
