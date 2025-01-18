@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
@@ -31,15 +32,12 @@ export async function GET(
         hypothecationClearanceDoc: true,
         paymentTiming: true,
         paymentOwner: true,
-        paymentDetails: true
-      }
+        paymentDetails: true,
+      },
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Transform document URLs to full URLs if needed
@@ -50,15 +48,19 @@ export async function GET(
       registrationCertificate: getFullUrl(user.registrationCertificate),
       cancelledCheck: getFullUrl(user.cancelledCheck),
       challanSeizureMemo: getFullUrl(user.challanSeizureMemo),
-      deathCertificate: user.deathCertificate ? getFullUrl(user.deathCertificate) : null,
-      hypothecationClearanceDoc: user.hypothecationClearanceDoc ? getFullUrl(user.hypothecationClearanceDoc) : null,
+      deathCertificate: user.deathCertificate
+        ? getFullUrl(user.deathCertificate)
+        : null,
+      hypothecationClearanceDoc: user.hypothecationClearanceDoc
+        ? getFullUrl(user.hypothecationClearanceDoc)
+        : null,
     };
 
     return NextResponse.json(transformedUser);
   } catch (error) {
-    console.error('Error fetching user:', error);
+    console.error("Error fetching user:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch user' },
+      { error: "Failed to fetch user" },
       { status: 500 }
     );
   }
@@ -66,8 +68,8 @@ export async function GET(
 
 function getFullUrl(url: string | null): string | null {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
-  if (url.includes('res.cloudinary.com')) return `https://${url}`;
+  if (url.startsWith("http")) return url;
+  if (url.includes("res.cloudinary.com")) return `https://${url}`;
   return `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/raw/upload/${url}`;
 }
 
@@ -81,22 +83,22 @@ export async function PUT(
 
     const user = await prisma.user.update({
       where: { id },
-      data: { 
+      data: {
         paymentDone: Boolean(data.paymentDone),
         paymentTiming: data.paymentDone ? new Date() : null,
         paymentOwner: data.paymentOwner || null,
-        paymentDetails: data.paymentDetails || null
+        paymentDetails: data.paymentDetails || null,
       },
     });
 
     return NextResponse.json({ success: true, data: user });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: 'Failed to update' },
+      { success: false, error: "Failed to update" },
       { status: 500 }
     );
   }
 }
 
 // Ensure route is dynamic
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";

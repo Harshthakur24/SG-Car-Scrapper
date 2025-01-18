@@ -1,11 +1,12 @@
-'use client';
-import React, { useState, useRef } from 'react';
-import Header from '@/components/Header';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+"use client";
+import React, { useState, useRef } from "react";
+import Header from "@/components/Header";
 import { FileUpload } from "@/components/file-upload";
 import { cn } from "@/lib/utils";
-import { motion } from 'framer-motion';
-import { Toaster, toast } from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { motion } from "framer-motion";
+import { Toaster, toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 async function compressAndProcessFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -14,14 +15,14 @@ async function compressAndProcessFile(file: File): Promise<string> {
     reader.onload = () => {
       try {
         // Check if file is an image
-        if (file.type.startsWith('image/')) {
+        if (file.type.startsWith("image/")) {
           const img = new Image();
           img.src = reader.result as string;
           img.onload = () => {
             try {
-              const canvas = document.createElement('canvas');
-              const ctx = canvas.getContext('2d');
-              if (!ctx) throw new Error('Failed to get canvas context');
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+              if (!ctx) throw new Error("Failed to get canvas context");
 
               const maxSize = 600;
               let width = img.width;
@@ -40,35 +41,49 @@ async function compressAndProcessFile(file: File): Promise<string> {
               if (file.size > 2000000) quality = 0.5;
               if (file.size > 5000000) quality = 0.3;
 
-              const compressed = canvas.toDataURL('image/jpeg', quality);
+              const compressed = canvas.toDataURL("image/jpeg", quality);
               resolve(compressed);
             } catch (error) {
-              reject(new Error('Failed to compress image. Please try a different file.'));
+              reject(
+                new Error(
+                  "Failed to compress image. Please try a different file."
+                )
+              );
             }
           };
-          img.onerror = () => reject(new Error('Failed to load image. Please try a different file.'));
+          img.onerror = () =>
+            reject(
+              new Error("Failed to load image. Please try a different file.")
+            );
         } else {
           // For non-image files
           if (file.size > 1000000) {
-            reject(new Error('File too large. Please upload a file smaller than 1MB.'));
+            reject(
+              new Error(
+                "File too large. Please upload a file smaller than 1MB."
+              )
+            );
           } else {
             resolve(reader.result as string);
           }
         }
       } catch (error) {
-        reject(new Error('Failed to process file. Please try again.'));
+        reject(new Error("Failed to process file. Please try again."));
       }
     };
-    reader.onerror = () => reject(new Error('Failed to read file. Please try again.'));
+    reader.onerror = () =>
+      reject(new Error("Failed to read file. Please try again."));
   });
 }
 
 export default function FormPage() {
-  const [emailInput, setEmailInput] = useState('');
+  const [emailInput, setEmailInput] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isRcLost, setIsRcLost] = useState<boolean | null>(null);
-  const [isHypothecationCleared, setIsHypothecationCleared] = useState<boolean | null>(null);
-  const [vahanLink, setVahanLink] = useState('');
+  const [isHypothecationCleared, setIsHypothecationCleared] = useState<
+    boolean | null
+  >(null);
+  const [vahanLink, setVahanLink] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
     adharCard: null,
@@ -77,7 +92,7 @@ export default function FormPage() {
     cancelledCheck: null,
     challanSeizureMemo: null,
     deathCertificate: null,
-    hypothecationClearanceDoc: null
+    hypothecationClearanceDoc: null,
   });
   const fileInputsRef = useRef<{
     adharCard: HTMLInputElement | null;
@@ -98,24 +113,26 @@ export default function FormPage() {
   });
   const router = useRouter();
 
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     // Create loading toast at the start
-    const loadingToast = toast.loading('Checking vehicle status...');
+    const loadingToast = toast.loading("Checking vehicle status...");
 
     // Check if vehicle number is already present and payment is done
     const formData = new FormData(e.currentTarget);
-    const vehicleNumber = formData.get('vehicleNumber') as string;
+    const vehicleNumber = formData.get("vehicleNumber") as string;
 
     try {
-      const vehicleCheckResponse = await fetch('/api/check-vehicle-and-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleNumber }),
-      });
+      const vehicleCheckResponse = await fetch(
+        "/api/check-vehicle-and-payment",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vehicleNumber }),
+        }
+      );
 
       const vehicleData = await vehicleCheckResponse.json();
 
@@ -123,32 +140,37 @@ export default function FormPage() {
       toast.dismiss(loadingToast);
 
       if (!vehicleCheckResponse.ok) {
-        throw new Error(vehicleData.error || 'Failed to check vehicle and payment status');
+        throw new Error(
+          vehicleData.error || "Failed to check vehicle and payment status"
+        );
       }
 
       if (vehicleData.vehicleExists) {
-        toast.error('Registration already exists for this vehicle number', {
+        toast.error("Registration already exists for this vehicle number", {
           duration: 4000,
-          icon: '🚗',
+          icon: "🚗",
           style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "16px",
           },
         });
         return;
       }
 
       if (vehicleData.vehicleExists && !vehicleData.paymentDone) {
-        toast.error('Payment has already been processed for this vehicle number', {
-          duration: 4000,
-          icon: '💰',
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
-          },
-        });
+        toast.error(
+          "Payment has already been processed for this vehicle number",
+          {
+            duration: 4000,
+            icon: "💰",
+            style: {
+              background: "#fee2e2",
+              color: "#991b1b",
+              padding: "16px",
+            },
+          }
+        );
         return;
       }
 
@@ -160,17 +182,17 @@ export default function FormPage() {
       const formJson = Object.fromEntries(formData.entries());
 
       // Log to verify vehicle number is included
-      console.log('Form data:', formJson);
+      console.log("Form data:", formJson);
 
       // Store basic data
       const basicData = {
         ...formJson,
         isRcLost,
         isHypothecated: isHypothecationCleared,
-        vahanRegistrationLink: vahanLink
+        vahanRegistrationLink: vahanLink,
       };
 
-      localStorage.setItem('pendingBasicData', JSON.stringify(basicData));
+      localStorage.setItem("pendingBasicData", JSON.stringify(basicData));
 
       // Process files one by one with better error handling
       const processedFiles: { [key: string]: string } = {};
@@ -181,7 +203,11 @@ export default function FormPage() {
             processedFiles[key] = compressedData;
           } catch (error) {
             console.error(`Error processing ${key}:`, error);
-            throw new Error(`Failed to process ${file.name}. ${error instanceof Error ? error.message : 'Please try again.'}`);
+            throw new Error(
+              `Failed to process ${file.name}. ${
+                error instanceof Error ? error.message : "Please try again."
+              }`
+            );
           }
         }
       }
@@ -200,19 +226,21 @@ export default function FormPage() {
           console.error(`Failed to store ${key}:`, error);
           // Clean up any stored chunks
           Object.keys(localStorage)
-            .filter(k => k.startsWith('file_'))
-            .forEach(k => localStorage.removeItem(k));
-          throw new Error('Failed to store files. Please try with smaller files or fewer files.');
+            .filter((k) => k.startsWith("file_"))
+            .forEach((k) => localStorage.removeItem(k));
+          throw new Error(
+            "Failed to store files. Please try with smaller files or fewer files."
+          );
         }
       }
 
       // 4. Generate OTP
       toast.dismiss(loadingToast);
-      const otpToast = toast.loading('Sending verification code...');
+      const otpToast = toast.loading("Sending verification code...");
 
-      const response = await fetch('/api/generate-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/generate-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: formJson.email,
           phoneNumber: formJson.phoneNumber,
@@ -221,36 +249,43 @@ export default function FormPage() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send verification code');
+        throw new Error(data.error || "Failed to send verification code");
       }
 
       // 5. Success
       toast.dismiss(otpToast);
-      toast.success('Verification code sent!');
-      router.replace(`/verify?email=${encodeURIComponent(formJson.email as string)}&phoneNumber=${encodeURIComponent(formJson.phoneNumber as string)}&tempId=${data.tempId}`);
-
+      toast.success("Verification code sent!");
+      router.replace(
+        `/verify?email=${encodeURIComponent(
+          formJson.email as string
+        )}&phoneNumber=${encodeURIComponent(
+          formJson.phoneNumber as string
+        )}&tempId=${data.tempId}`
+      );
     } catch (error) {
       toast.dismiss(loadingToast);
-      toast.error(error instanceof Error ? error.message : 'Failed to process submission');
-      console.error('Submission error:', error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to process submission"
+      );
+      console.error("Submission error:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const validateForm = () => {
-    const form = document.querySelector('form');
+    const form = document.querySelector("form");
     if (!form) return false;
 
     let isValid = true;
 
     // Required text fields validation
     const textFields = {
-      name: 'Name',
-      email: 'Email',
-      phoneNumber: 'Phone Number',
-      vehicleNumber: 'Vehicle Number',
-      aadharNumber: 'Aadhar Number'
+      name: "Name",
+      email: "Email",
+      phoneNumber: "Phone Number",
+      vehicleNumber: "Vehicle Number",
+      aadharNumber: "Aadhar Number",
     };
 
     // Check each text field
@@ -260,9 +295,9 @@ export default function FormPage() {
         toast.error(`Please enter ${label}`, {
           duration: 3000,
           style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "16px",
           },
         });
         isValid = false;
@@ -271,11 +306,11 @@ export default function FormPage() {
 
     // Required file uploads validation
     const requiredFiles = {
-      adharCard: 'Aadhar Card',
-      panCard: 'PAN Card',
-      registrationCertificate: 'Registration Certificate',
-      cancelledCheck: 'Cancelled Check',
-      challanSeizureMemo: 'Challan Seizure Memo'
+      adharCard: "Aadhar Card",
+      panCard: "PAN Card",
+      registrationCertificate: "Registration Certificate",
+      cancelledCheck: "Cancelled Check",
+      challanSeizureMemo: "Challan Seizure Memo",
     };
 
     // Check each required file
@@ -284,9 +319,9 @@ export default function FormPage() {
         toast.error(`Please upload ${label}`, {
           duration: 3000,
           style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "16px",
           },
         });
         isValid = false;
@@ -295,22 +330,25 @@ export default function FormPage() {
 
     // Check hypothecation status
     if (isHypothecationCleared === null) {
-      toast.error('Please select whether your vehicle hypothecation is cleared', {
-        duration: 3000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '16px',
-        },
-      });
+      toast.error(
+        "Please select whether your vehicle hypothecation is cleared",
+        {
+          duration: 3000,
+          style: {
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "16px",
+          },
+        }
+      );
       isValid = false;
     } else if (isHypothecationCleared && !files.hypothecationClearanceDoc) {
-      toast.error('Please upload the Hypothecation Clearance Document', {
+      toast.error("Please upload the Hypothecation Clearance Document", {
         duration: 3000,
         style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '16px',
+          background: "#fee2e2",
+          color: "#991b1b",
+          padding: "16px",
         },
       });
       isValid = false;
@@ -318,24 +356,26 @@ export default function FormPage() {
 
     // Check RC Lost status
     if (isRcLost === null) {
-      toast.error('Please select whether your RC is lost', {
+      toast.error("Please select whether your RC is lost", {
         duration: 3000,
         style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '16px',
+          background: "#fee2e2",
+          color: "#991b1b",
+          padding: "16px",
         },
       });
       isValid = false;
     } else if (isRcLost) {
-      const declaration = (form.elements.namedItem('rcLostDeclaration') as HTMLTextAreaElement)?.value;
+      const declaration = (
+        form.elements.namedItem("rcLostDeclaration") as HTMLTextAreaElement
+      )?.value;
       if (!declaration?.trim()) {
-        toast.error('Please write a declaration about your lost RC', {
+        toast.error("Please write a declaration about your lost RC", {
           duration: 3000,
           style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "16px",
           },
         });
         isValid = false;
@@ -352,22 +392,23 @@ export default function FormPage() {
         toastOptions={{
           duration: 5000,
           style: {
-            background: '#fff',
-            color: '#363636',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            borderRadius: '0.5rem',
-            padding: '1rem',
+            background: "#fff",
+            color: "#363636",
+            boxShadow:
+              "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+            borderRadius: "0.5rem",
+            padding: "1rem",
           },
           success: {
             iconTheme: {
-              primary: '#22C55E',
-              secondary: '#fff',
+              primary: "#22C55E",
+              secondary: "#fff",
             },
           },
           error: {
             iconTheme: {
-              primary: '#EF4444',
-              secondary: '#fff',
+              primary: "#EF4444",
+              secondary: "#fff",
             },
           },
         }}
@@ -379,7 +420,6 @@ export default function FormPage() {
         <div className="relative p-1 rounded-2xl bg-gradient-to-r">
           <div className="absolute inset-0 border-2 border-dashed border-black rounded-2xl"></div>
           <div className="relative bg-white rounded-2xl shadow-xl p-8 md:p-10">
-
             <div className="mb-8">
               <h2 className="text-3xl md:text-4xl text-gray-900 font-bold text-center">
                 Required Documents
@@ -434,7 +474,9 @@ export default function FormPage() {
                       placeholder="Enter your phone number"
                     />
                     {errors.phoneNumber && (
-                      <p className="mt-1 text-sm text-red-500">{errors.phoneNumber}</p>
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.phoneNumber}
+                      </p>
                     )}
                   </div>
 
@@ -455,11 +497,13 @@ export default function FormPage() {
                       value={emailInput}
                       onChange={(e) => {
                         setEmailInput(e.target.value);
-                        setErrors({ ...errors, email: '' });
+                        setErrors({ ...errors, email: "" });
                       }}
                     />
                     {errors.email && (
-                      <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.email}
+                      </p>
                     )}
                   </div>
 
@@ -485,15 +529,20 @@ export default function FormPage() {
                         }
                       }}
                       onChange={(e) => {
-                        const value = e.target.value.replace(/\s/g, '');
+                        const value = e.target.value.replace(/\s/g, "");
                         if (value.length <= 12) {
-                          const formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+                          const formatted = value.replace(
+                            /(\d{4})(?=\d)/g,
+                            "$1 "
+                          );
                           e.target.value = formatted;
                         }
                       }}
                     />
                     {errors.aadharNumber && (
-                      <p className="mt-1 text-sm text-red-500">{errors.aadharNumber}</p>
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.aadharNumber}
+                      </p>
                     )}
                   </div>
 
@@ -513,7 +562,9 @@ export default function FormPage() {
                       placeholder="Enter vehicle number"
                     />
                     {errors.vehicleNumber && (
-                      <p className="mt-1 text-sm text-red-500">{errors.vehicleNumber}</p>
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.vehicleNumber}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -528,7 +579,7 @@ export default function FormPage() {
                   <FileUpload
                     label="Aadhar Card"
                     name="adharCard"
-                    ref={el => {
+                    ref={(el) => {
                       fileInputsRef.current.adharCard = el;
                     }}
                     onChange={(file) => {
@@ -540,7 +591,7 @@ export default function FormPage() {
                   <FileUpload
                     label="PAN Card"
                     name="panCard"
-                    ref={el => {
+                    ref={(el) => {
                       fileInputsRef.current.panCard = el;
                     }}
                     onChange={(file) => {
@@ -552,11 +603,14 @@ export default function FormPage() {
                   <FileUpload
                     label="Registration Certificate"
                     name="registrationCertificate"
-                    ref={el => {
+                    ref={(el) => {
                       fileInputsRef.current.registrationCertificate = el;
                     }}
                     onChange={(file) => {
-                      const newFiles = { ...files, registrationCertificate: file };
+                      const newFiles = {
+                        ...files,
+                        registrationCertificate: file,
+                      };
                       setFiles(newFiles);
                     }}
                   />
@@ -564,7 +618,7 @@ export default function FormPage() {
                   <FileUpload
                     label="Death Certificate"
                     name="deathCertificate"
-                    ref={el => {
+                    ref={(el) => {
                       fileInputsRef.current.deathCertificate = el;
                     }}
                     onChange={(file) => {
@@ -576,7 +630,7 @@ export default function FormPage() {
                   <FileUpload
                     label="Cancelled Check / Pass Book"
                     name="cancelledCheck"
-                    ref={el => {
+                    ref={(el) => {
                       fileInputsRef.current.cancelledCheck = el;
                     }}
                     onChange={(file) => {
@@ -588,7 +642,7 @@ export default function FormPage() {
                   <FileUpload
                     label="Challan Seizure Memo"
                     name="challanSeizureMemo"
-                    ref={el => {
+                    ref={(el) => {
                       fileInputsRef.current.challanSeizureMemo = el;
                     }}
                     onChange={(file) => {
@@ -603,20 +657,46 @@ export default function FormPage() {
                 <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-100 rounded-xl p-5">
                   <div className="flex items-start gap-3">
                     <div className="p-2 bg-amber-100 rounded-lg shrink-0">
-                      <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-5 h-5 text-amber-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                     </div>
                     <div className="space-y-4 w-full">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-                        <h4 className="text-base font-semibold text-gray-900 mb-3 sm:mb-0">Is your vehicle&apos;s hypothecation cleared?</h4>
+                        <h4 className="text-base font-semibold text-gray-900 mb-3 sm:mb-0">
+                          Is your vehicle&apos;s hypothecation cleared?
+                        </h4>
                         <div className="flex items-center gap-3">
-                          <button type="button" onClick={() => setIsHypothecationCleared(true)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium ${isHypothecationCleared ? 'bg-amber-600 text-white' : 'bg-white border text-gray-600'}`}>
+                          <button
+                            type="button"
+                            onClick={() => setIsHypothecationCleared(true)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium ${
+                              isHypothecationCleared
+                                ? "bg-amber-600 text-white"
+                                : "bg-white border text-gray-600"
+                            }`}
+                          >
                             Yes
                           </button>
-                          <button type="button" onClick={() => setIsHypothecationCleared(false)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium ${isHypothecationCleared === false ? 'bg-gray-600 text-white' : 'bg-white border text-gray-600'}`}>
+                          <button
+                            type="button"
+                            onClick={() => setIsHypothecationCleared(false)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium ${
+                              isHypothecationCleared === false
+                                ? "bg-gray-600 text-white"
+                                : "bg-white border text-gray-600"
+                            }`}
+                          >
                             No
                           </button>
                         </div>
@@ -625,18 +705,22 @@ export default function FormPage() {
                       {isHypothecationCleared && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
+                          animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.3 }}
                         >
                           <FileUpload
                             label="Hypothecation Clearance Document"
                             name="hypothecationClearanceDoc"
-                            ref={el => {
-                              fileInputsRef.current.hypothecationClearanceDoc = el;
+                            ref={(el) => {
+                              fileInputsRef.current.hypothecationClearanceDoc =
+                                el;
                             }}
                             onChange={(file) => {
-                              const newFiles = { ...files, hypothecationClearanceDoc: file };
+                              const newFiles = {
+                                ...files,
+                                hypothecationClearanceDoc: file,
+                              };
                               setFiles(newFiles);
                             }}
                           />
@@ -650,20 +734,46 @@ export default function FormPage() {
                 <div className="bg-gradient-to-r from-rose-50 to-red-50 border border-rose-100 rounded-xl p-5">
                   <div className="flex items-start gap-3">
                     <div className="p-2 bg-rose-100 rounded-lg shrink-0">
-                      <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      <svg
+                        className="w-5 h-5 text-rose-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
                       </svg>
                     </div>
                     <div className="space-y-4 w-full">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-                        <h4 className="text-base font-semibold text-gray-900 mb-3 sm:mb-0">Is your Registration Certificate (RC) Lost?</h4>
+                        <h4 className="text-base font-semibold text-gray-900 mb-3 sm:mb-0">
+                          Is your Registration Certificate (RC) Lost?
+                        </h4>
                         <div className="flex items-center gap-3">
-                          <button type="button" onClick={() => setIsRcLost(true)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isRcLost ? 'bg-rose-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-rose-300'}`}>
+                          <button
+                            type="button"
+                            onClick={() => setIsRcLost(true)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                              isRcLost
+                                ? "bg-rose-600 text-white"
+                                : "bg-white border border-gray-300 text-gray-600 hover:border-rose-300"
+                            }`}
+                          >
                             Yes
                           </button>
-                          <button type="button" onClick={() => setIsRcLost(false)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isRcLost === false ? 'bg-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                          <button
+                            type="button"
+                            onClick={() => setIsRcLost(false)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                              isRcLost === false
+                                ? "bg-gray-600 text-white"
+                                : "bg-white border border-gray-300 text-gray-600 hover:border-gray-400"
+                            }`}
+                          >
                             No
                           </button>
                         </div>
@@ -672,13 +782,14 @@ export default function FormPage() {
                       {isRcLost && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
+                          animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.3 }}
                           className="space-y-3"
                         >
                           <p className="text-sm text-gray-600">
-                            Please provide a declaration stating the loss of your RC.
+                            Please provide a declaration stating the loss of
+                            your RC.
                           </p>
                           <div className="mt-2">
                             <textarea
@@ -695,7 +806,10 @@ export default function FormPage() {
                               required
                               className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                             />
-                            <label htmlFor="rcLostConfirm" className="text-sm text-gray-600" >
+                            <label
+                              htmlFor="rcLostConfirm"
+                              className="text-sm text-gray-600"
+                            >
                               I confirm this declaration is true and accurate
                             </label>
                           </div>
@@ -726,12 +840,12 @@ export default function FormPage() {
                         animate={{
                           scale: [1, 1.5, 1],
                           opacity: [1, 0.6, 1],
-                          y: [0, -2, 0]
+                          y: [0, -2, 0],
                         }}
                         transition={{
                           duration: 2,
                           repeat: Infinity,
-                          ease: "easeInOut"
+                          ease: "easeInOut",
                         }}
                         className="w-2 h-2 rounded-full bg-blue-600"
                       />
@@ -760,11 +874,21 @@ export default function FormPage() {
                       {vahanLink && (
                         <button
                           type="button"
-                          onClick={() => setVahanLink('')}
+                          onClick={() => setVahanLink("")}
                           className="absolute right-3 p-1 rounded-full hover:bg-gray-100"
                         >
-                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          <svg
+                            className="w-4 h-4 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       )}
@@ -776,13 +900,25 @@ export default function FormPage() {
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-5 h-5 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 leading-relaxed">
-                      Please generate your Vahan registration link before submitting the documents. This link will be used to verify your vehicle registration details.
+                      Please generate your Vahan registration link before
+                      submitting the documents. This link will be used to verify
+                      your vehicle registration details.
                     </p>
                   </div>
                 </div>
@@ -808,14 +944,30 @@ export default function FormPage() {
                 >
                   {isSubmitting ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Submitting...
                     </>
                   ) : (
-                    'Submit Application'
+                    "Submit Application"
                   )}
                 </button>
               </div>
