@@ -1,4 +1,4 @@
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -6,29 +6,37 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+if (
+  !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+  !process.env.CLOUDINARY_API_KEY ||
+  !process.env.CLOUDINARY_API_SECRET
+) {
+  throw new Error("Cloudinary configuration is missing");
+}
+
 export async function uploadToCloudinary(base64String: string) {
   try {
     // Extract MIME type and base64 data
     const matches = base64String.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-    
+
     if (!matches) {
-      throw new Error('Invalid base64 string format');
+      throw new Error("Invalid base64 string format");
     }
 
     const mimeType = matches[1];
     const base64Data = matches[2];
-    const isPDF = mimeType.includes('pdf');
+    const isPDF = mimeType.includes("pdf");
 
-    console.log('Uploading file:', { mimeType, isPDF });
+    console.log("Uploading file:", { mimeType, isPDF });
 
-    const uploadOptions: { 
-      folder: string; 
+    const uploadOptions: {
+      folder: string;
       resource_type: "raw" | "image" | "auto" | "video";
       format?: string;
     } = {
-      folder: 'vehicle-scrap',
+      folder: "vehicle-scrap",
       resource_type: isPDF ? "raw" : "image",
-      format: isPDF ? 'pdf' : undefined,
+      format: isPDF ? "pdf" : undefined,
     };
 
     const result = await cloudinary.uploader.upload(
@@ -37,18 +45,18 @@ export async function uploadToCloudinary(base64String: string) {
     );
 
     if (!result || !result.secure_url) {
-      throw new Error('Upload failed - no URL returned');
+      throw new Error("Upload failed - no URL returned");
     }
 
-    console.log('Upload successful:', {
-      type: isPDF ? 'PDF' : 'Image',
+    console.log("Upload successful:", {
+      type: isPDF ? "PDF" : "Image",
       url: result.secure_url,
-      resourceType: uploadOptions.resource_type
+      resourceType: uploadOptions.resource_type,
     });
 
     return result.secure_url;
   } catch (error) {
-    console.error('Cloudinary upload error:', error);
+    console.error("Cloudinary upload error:", error);
     throw error;
   }
-} 
+}
