@@ -11,7 +11,7 @@ export async function sendVerificationEmail(email: string, otp: string) {
     console.log('Sending email to:', email, 'with OTP:', otp);
 
     const { data, error } = await resend.emails.send({
-      from: 'Vehicle Scrap <no-reply@ecoelv.in>',
+      from: 'Vehicle Scrap <no-reply@sg-junkyard.ecoelv.in>',
       to: email,
       subject: 'Your Verification Code',
       html: `
