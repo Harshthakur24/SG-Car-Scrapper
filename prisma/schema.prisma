@@ -39,6 +39,8 @@ model User {
   paymentDetails            String?
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
+  emailVerified             Boolean   @default(false)
+  phoneVerified             Boolean   @default(false)
 }
 
 model AdminOTP {
@@ -56,4 +58,18 @@ model Admin {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model OTPVerification {
+  id          String    @id @default(cuid())
+  email       String
+  phoneNumber String
+  emailOTP    String
+  phoneOTP    String
+  tempId      String    @unique
+  aadhaarOTP  String?
+  expiresAt   DateTime
+  emailVerified Boolean @default(false)
+  phoneVerified Boolean @default(false)
+  createdAt   DateTime  @default(now())
 }

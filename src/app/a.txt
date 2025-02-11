@@ -1,0 +1,88 @@
+@schema.prisma @route.ts @page.tsx @route.ts @page.tsx @page.tsx 
+@route.ts @page.tsx @page.tsx 
+Please generate a complete, error-free code implementation for a two-step OTP verification process with the following requirements:
+
+Initial Form Submission:
+
+When the user clicks the submit button, the system should immediately trigger the sending of an OTP to the user's registered email address.
+Display a message or redirect the user to an OTP verification screen for the email.
+Email OTP Verification:
+
+The user must input the OTP received via email.
+Validate the entered OTP on the backend.
+Only after successful email OTP verification, proceed to the next step.
+Phone OTP Verification:
+
+Retrieve the user's mobile number using their Aadhaar number (assume the Aadhaar number is already provided and validated).
+Automatically send an OTP to the retrieved mobile number.
+Display a screen where the user can input the OTP received on their phone.
+Validate the phone OTP on the backend.
+Note: The phone OTP verification is mandatory and should only be available after successful email OTP verification.
+Final Submission:
+
+Once both the email and phone OTPs have been successfully verified, mark the user's documents as submitted.
+Redirect the user to the appropriate confirmation page.
+Ensure that no document submission occurs unless both OTP verifications are complete.
+General Requirements:
+
+Ensure the entire flow is bug-free and that error handling is in place for incorrect OTPs, expired OTPs, and any potential server errors.
+The code should maintain clear separation of concerns, proper validation at each step, and secure handling of the OTP processes.
+Both OTP verification steps are mandatory and should not be bypassed.
+Include any necessary comments to explain key parts of the code.
+Please provide a well-structured, production-ready code solution that meets these requirements.
+
+"use client";
+
+import axios from 'axios';
+
+//////////OTP send krne ke liye
+
+    const options = {
+        method: 'POST',
+        url: 'https://api.sandbox.co.in/kyc/aadhaar/okyc/otp',
+        headers: {
+            accept: 'application/json',
+            authorization: 'eyJhbGciOiJIUzUxMiJ9.eyJhdWQiOiJBUEkiLCJyZWZyZXNoX3Rva2VuIjoiZXlKaGJHY2lPaUpJVXpVeE1pSjkuZXlKaGRXUWlPaUpCVUVraUxDSnpkV0lpT2lKaGJuTm9jMmx1WjJoaGJEYzJNa0JuYldGcGJDNWpiMjBpTENKaGNHbGZhMlY1SWpvaWEyVjVYMnhwZG1WZk5ubEVXVkZ4WkZoVGJHWXlTbmhwVTNOR1YzWTJUMmhsUVUxUWVFOHpiMUFpTENKcGMzTWlPaUpoY0drdWMyRnVaR0p2ZUM1amJ5NXBiaUlzSW1WNGNDSTZNVGMzTURVMk1qVTNNaXdpYVc1MFpXNTBJam9pVWtWR1VrVlRTRjlVVDB0RlRpSXNJbWxoZENJNk1UY3pPVEF5TmpVM01uMC42SXZDd040MEYzeGhfVVRyZzVYZV9PRERKYkFhV0p5TnJ4WWI3SzVoTXdtWlZHYm9IZERyYnlwUGlNWHZxc2pvTzAtdjRYNEpWdkppOWNFM2UxRGw1dyIsInN1YiI6ImFuc2hzaW5naGFsNzYyQGdtYWlsLmNvbSIsImFwaV9rZXkiOiJrZXlfbGl2ZV82eURZUXFkWFNsZjJKeGlTc0ZXdjZPaGVBTVB4TzNvUCIsImlzcyI6ImFwaS5zYW5kYm94LmNvLmluIiwiZXhwIjoxNzM5MTEyOTcyLCJpbnRlbnQiOiJBQ0NFU1NfVE9LRU4iLCJpYXQiOjE3MzkwMjY1NzJ9.sEqzMWw18THX0lJMJgSHZf_suO0Y0ec_p4MNv1pQQe5BG7p5G8YW3RV2ydmFA0lBDSCYsRSGI5xZgl6r5g7fCw',
+            'x-api-key': 'key_live6yDYQqdXSlf2JxiSsFWv6OheAMPxO3oP',
+            'x-api-version': '2.0',
+            'content-type': 'application/json'
+        },
+        data: {
+            '@entity': 'in.co.sandbox.kyc.aadhaar.okyc.otp.request',
+            aadhaar_number: '496720286015',
+            consent: 'y',
+            reason: 'For KYC'
+        }
+    };
+
+    axios
+        .request(options)
+        .then(res => console.log(res.data))
+        .catch(err => console.error(err));
+
+//////////////verify OTP
+
+import axios from 'axios';
+
+const options = {
+  method: 'POST',
+  url: 'https://api.sandbox.co.in/kyc/aadhaar/okyc/otp/verify',
+  headers: {
+    accept: 'application/json',
+    authorization: 'eyJhbGciOiJIUzUxMiJ9.eyJhdWQiOiJBUEkiLCJyZWZyZXNoX3Rva2VuIjoiZXlKaGJHY2lPaUpJVXpVeE1pSjkuZXlKaGRXUWlPaUpCVUVraUxDSnpkV0lpT2lKaGJuTm9jMmx1WjJoaGJEYzJNa0JuYldGcGJDNWpiMjBpTENKaGNHbGZhMlY1SWpvaWEyVjVYMnhwZG1WZk5ubEVXVkZ4WkZoVGJHWXlTbmhwVTNOR1YzWTJUMmhsUVUxUWVFOHpiMUFpTENKcGMzTWlPaUpoY0drdWMyRnVaR0p2ZUM1amJ5NXBiaUlzSW1WNGNDSTZNVGMzTURVMk1qVTNNaXdpYVc1MFpXNTBJam9pVWtWR1VrVlRTRjlVVDB0RlRpSXNJbWxoZENJNk1UY3pPVEF5TmpVM01uMC42SXZDd040MEYzeGhfVVRyZzVYZV9PRERKYkFhV0p5TnJ4WWI3SzVoTXdtWlZHYm9IZERyYnlwUGlNWHZxc2pvTzAtdjRYNEpWdkppOWNFM2UxRGw1dyIsInN1YiI6ImFuc2hzaW5naGFsNzYyQGdtYWlsLmNvbSIsImFwaV9rZXkiOiJrZXlfbGl2ZV82eURZUXFkWFNsZjJKeGlTc0ZXdjZPaGVBTVB4TzNvUCIsImlzcyI6ImFwaS5zYW5kYm94LmNvLmluIiwiZXhwIjoxNzM5MTEyOTcyLCJpbnRlbnQiOiJBQ0NFU1NfVE9LRU4iLCJpYXQiOjE3MzkwMjY1NzJ9.sEqzMWw18THX0lJMJgSHZf_suO0Y0ec_p4MNv1pQQe5BG7p5G8YW3RV2ydmFA0lBDSCYsRSGI5xZgl6r5g7fCw',
+    'x-api-key': 'key_live_6yDYQqdXSlf2JxiSsFWv6OheAMPxO3oP',
+    'x-api-version': '2.0',
+    'content-type': 'application/json'
+  },
+  data: {
+    '@entity': 'in.co.sandbox.kyc.aadhaar.okyc.request',
+    reference_id: refernce if of send otp in response,
+    otp: '133686'
+  }
+};
+
+axios
+  .request(options)
+  .then(res => console.log(res.data))
+  .catch(err => console.error(err)); 
+reference for adhar and phone otp part do not touch or remove any existing feature or route or code or anything just add the phone addhar otp flow correctly fix ghe logic correctly create a differemt route to generate mobile addhar otp and verify and then use it in @page.tsx @page.tsx pages and ensure no errors
