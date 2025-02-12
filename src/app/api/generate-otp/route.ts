@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("OTP generation error:", error);
     return NextResponse.json(
-      { error: "Failed to send verification code" },
+      { error: error || "Failed to send verification code" }, // Use a default message if error.message is undefined
       { status: 500 }
     );
   }

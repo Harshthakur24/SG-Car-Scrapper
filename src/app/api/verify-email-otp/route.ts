@@ -64,10 +64,6 @@ export async function POST(request: Request) {
         phoneOtpResponse.data?.data?.reference_id
       );
       if (!phoneOTPReference) {
-        console.error(
-          "Missing reference_id in response:",
-          phoneOtpResponse.data
-        );
         return NextResponse.json(
           {
             success: false,
@@ -95,12 +91,12 @@ export async function POST(request: Request) {
         { status: 200 }
       );
     } catch (error: any) {
-      console.error("Failed to send phone OTP:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        stack: error.stack,
-      });
+      // console.error("Failed to send phone OTP:", {
+      //   message: error.message,
+      //   response: error.response?.data,
+      //   status: error.response?.status,
+      //   stack: error.stack,
+      // });
       return NextResponse.json(
         {
           success: false,
