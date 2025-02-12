@@ -41,8 +41,6 @@ const nextConfig = {
       },
     ],
   },
-  assetPrefix:
-    process.env.NODE_ENV === "production" ? "https://rawpng.com" : "",
 };
 
 module.exports = nextConfig;
