@@ -177,29 +177,12 @@ function VerifyContent() {
 
         <motion.p className="text-center text-black mb-8 font-medium">
           {step === "email"
-            ? `We've sent a verification code to ${email}. Please also provide your Aadhaar number to verify your phone OTP.`
+            ? `We've sent a verification code to ${email}. Please enter the recieved OTP.`
             : "We've sent a verification code to your registered mobile number."}
         </motion.p>
 
         <form onSubmit={handleVerify} className="space-y-8">
-          {step === "email" && (
-            <div className="mb-4">
-              <label
-                htmlFor="aadharNumber"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Aadhaar Number
-              </label>
-              <input
-                type="text"
-                id="aadharNumber"
-                value={aadharNumber}
-                onChange={(e) => setAadharNumber(e.target.value)}
-                placeholder="Enter your Aadhaar number"
-                className="w-full px-4 py-2 rounded-md border text-black border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
-          )}
+          
 
           <div className="flex justify-center gap-2 sm:gap-3">
             {[...Array(6)].map((_, index) => (
