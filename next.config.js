@@ -1,11 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    optimizeCss: true,
-  },
-
-  /* config options here */
-
+  reactStrictMode: true,
+  swcMinify: true,
   images: {
     domains: [
       "rawpng.com",
