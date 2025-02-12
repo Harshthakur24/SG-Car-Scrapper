@@ -8,9 +8,13 @@
       "src": "package.json",
       "use": "@vercel/next",
       "config": {
-        "nodeVersion": "18",
-        "installCommand": "apt-get update && apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev && npm install"
+        "nodeVersion": "18"
       }
     }
-  ]
+  ],
+  "build": {
+    "env": {
+      "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
+    }
+  }
 }
