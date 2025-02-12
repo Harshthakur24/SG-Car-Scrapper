@@ -178,7 +178,7 @@ function VerifyContent() {
         <motion.p className="text-center text-black mb-8 font-medium">
           {step === "email"
             ? `We've sent a verification code to ${email}. Please enter the recieved OTP.`
-            : "We've sent a verification code to your registered mobile number."}
+            : "We've sent a verification code to your Aadhaar-linked mobile number."}
         </motion.p>
 
         <form onSubmit={handleVerify} className="space-y-8">
