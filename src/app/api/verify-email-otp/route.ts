@@ -99,6 +99,7 @@ export async function POST(request: Request) {
         {
           success: true,
           message: "Email verified successfully. Phone OTP has been sent.",
+          token: token,
           reference: phoneOTPReference,
         },
         { status: 200 }
