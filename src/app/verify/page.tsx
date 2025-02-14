@@ -9,7 +9,6 @@ function VerifyContent() {
   const [otp, setOtp] = useState("");
   const [aadharNumber, setAadharNumber] = useState("");
   const [token, setToken] = useState("");
-
   const [isVerifying, setIsVerifying] = useState(false);
   const [step, setStep] = useState<"email" | "phone">("email");
   const router = useRouter();
@@ -59,6 +58,9 @@ function VerifyContent() {
         if (!response.ok || !data.success) {
           throw new Error(data.error || "Email verification failed");
         }
+
+        setToken(data.token);
+        
 
         toast.dismiss(loadingToast);
         toast.success("Email verified! Phone OTP has been sent.");
