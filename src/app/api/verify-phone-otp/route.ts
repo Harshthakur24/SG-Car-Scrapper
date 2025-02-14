@@ -49,12 +49,24 @@ export async function POST(request: Request) {
         expiresAt: otpRecord.expiresAt,
       })}`
     );
+    const optionstoken = {
+      method: 'POST',
+      url: 'https://api.sandbox.co.in/authenticate',
+      headers: {
+        accept: 'application/json',
+        'x-api-key': process.env.SANDBOX_API_KEY,
+        'x-api-secret': process.env.SANDBOX_API_SECRET,
+        'x-api-version': '2.0'
+      }
+    };
+    
+    const token = (await axios.request(optionstoken)).data.access_token;
     const aadhaarVerifyOptions = {
       method: "POST",
       url: "https://api.sandbox.co.in/kyc/aadhaar/okyc/otp/verify",
       headers: {
         accept: "application/json",
-        authorization: process.env.SANDBOX_AUTH_TOKEN,
+        authorization: token,
         "x-api-key": process.env.SANDBOX_API_KEY,
         "x-api-version": "2.0",
         "content-type": "application/json",

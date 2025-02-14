@@ -20,13 +20,26 @@ export async function POST(request: Request) {
     // Remove spaces from the Aadhaar number (if any)
     const sanitizedAadharNumber = aadharNumber.replace(/\s/g, "");
 
+    const optionstoken: AxiosRequestConfig = {
+      method: 'POST',
+      url: 'https://api.sandbox.co.in/authenticate',
+      headers: {
+        accept: 'application/json',
+        'x-api-key': process.env.SANDBOX_API_KEY,
+        'x-api-secret': process.env.SANDBOX_API_SECRET,
+        'x-api-version': '2.0'
+      }
+    };
+    
+    const token = (await axios.request(optionstoken)).data.access_token;
+
     // Set up the Axios request options
     const options: AxiosRequestConfig = {
       method: "POST",
       url: "https://api.sandbox.co.in/kyc/aadhaar/okyc/otp",
       headers: {
         accept: "application/json",
-        authorization: process.env.SANDBOX_AUTH_TOKEN,
+        authorization: token,
         "x-api-key": process.env.SANDBOX_API_KEY,
         "x-api-version": "2.0",
         "content-type": "application/json",
