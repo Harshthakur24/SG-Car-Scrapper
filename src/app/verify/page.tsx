@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 function VerifyContent() {
   const [otp, setOtp] = useState("");
   const [aadharNumber, setAadharNumber] = useState("");
+  const [token, setToken] = useState("");
+
   const [isVerifying, setIsVerifying] = useState(false);
   const [step, setStep] = useState<"email" | "phone">("email");
   const router = useRouter();
@@ -121,6 +123,7 @@ function VerifyContent() {
             otp: otp.trim(),
             tempId,
             formData,
+            token,
           }),
         });
 
