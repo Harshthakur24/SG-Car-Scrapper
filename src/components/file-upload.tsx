@@ -65,18 +65,19 @@ export const FileUpload = forwardRef<
         >
             <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
+                    
+                    {label==='Death Certificate'? (
                     <label className="text-base font-bold text-gray-900">
-                        {label}
+                        {label} 
                     </label>
-                    {required && (
-                        <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="px-2 py-0.5 text-xs font-medium bg-red-50 text-red-600 rounded-full border border-red-100"
-                        >
-                            Required
-                        </motion.span>
+                    ):(
+                        <label className="text-base font-bold text-gray-900">
+                        {label} <span className="inline-flex scale-75 -ml-1 items-center px-2 py-1 rounded-3xl text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+      Required
+    </span>
+                        </label>
                     )}
+                    
                 </div>
             </div>
 
