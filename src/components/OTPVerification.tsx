@@ -63,7 +63,7 @@ export default function OTPVerification() {
         body: JSON.stringify({ token: data.token }),
       });
 
-      toast.success("Welcome admin!", { duration: 1500 });
+      toast.success("Welcome Admin!", { duration: 1500 });
       setTimeout(() => {
         router.push("/admin");
       }, 1500);
