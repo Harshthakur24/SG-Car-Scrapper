@@ -62,6 +62,7 @@ export default function OTPVerification() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: data.token }),
       });
+      console.log("Admin token on OTP verification:", data.token);
 
       toast.success("Welcome Admin!", { duration: 1500 });
       setTimeout(() => {

@@ -14,6 +14,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ authenticated: false });
     }
 
+    console.log(`auth/check route token: ${token}`);
+
     verify(token, process.env.JWT_SECRET || "fallback-secret");
     return NextResponse.json({ authenticated: true });
   } catch (error) {

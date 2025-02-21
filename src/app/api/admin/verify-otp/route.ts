@@ -50,6 +50,8 @@ export async function POST(req: Request) {
       { expiresIn: "24h" }
     );
 
+    console.log(`verify-otp route token: ${token}`)
+
     return NextResponse.json({
       success: true,
       token,

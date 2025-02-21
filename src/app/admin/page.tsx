@@ -178,7 +178,7 @@ export default function AdminPage() {
       try {
         const response = await fetch("/api/admin/auth/check");
         const data = await response.json();
-
+        console.log('data on admin page:', data)
         if (!data.authenticated) {
           router.push("/admin/verify");
           return;
