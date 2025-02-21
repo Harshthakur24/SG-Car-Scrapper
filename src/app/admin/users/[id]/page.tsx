@@ -142,6 +142,21 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
         fetchUser()
     }, [id])
 
+    const fetchUser = async () => {
+        if (!id) return; // Ensure id is available before fetching
+        setLoading(true); // Optionally set loading state
+        try {
+            const response = await fetch(`/api/admin/users/${id}`);
+            if (!response.ok) throw new Error('Failed to fetch user data');
+            const data = await response.json();
+            setUser(data); // Update the user state with the fetched data
+        } catch (error) {
+            console.error('Error fetching user:', error);
+        } finally {
+            setLoading(false); // Reset loading state
+        }
+    };
+
     const handlePaymentToggle = async () => {
         setIsConfirmationOpen(true)
     }
@@ -161,12 +176,12 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                     paymentDetails: paymentData.paymentDetails
                 }),
             });
-
+    
             if (!response.ok) throw new Error('Failed to update payment status');
-
-            const data = await response.json();
-            setUser(prev => prev ? { ...prev, ...data.data } : null);
-
+    
+            // Refetch user data after updating
+            await fetchUser();
+    
             toast.success(
                 `Payment ${!user?.paymentDone ? 'marked' : 'unmarked'} as done`,
                 {
