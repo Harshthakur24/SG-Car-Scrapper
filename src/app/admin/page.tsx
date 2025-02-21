@@ -176,7 +176,10 @@ export default function AdminPage() {
     const checkAuth = async () => {
       setIsAuthenticating(true);
       try {
-        const response = await fetch("/api/admin/auth/check");
+        const response = await fetch("/api/admin/auth/check", {
+          method: "GET",
+          credentials: "include", 
+        });
         const data = await response.json();
         console.log('data on admin page:', data)
         if (!data.authenticated) {
