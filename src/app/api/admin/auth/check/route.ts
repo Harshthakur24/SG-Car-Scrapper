@@ -1,25 +1,27 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { verify } from "jsonwebtoken";
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers
-      .get("Cookie")
-      ?.split(";")
-      .find((c) => c.trim().startsWith("admin_token="))
-      ?.split("=")[1];
-
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const token = cookieHeader
+      .split(';')
+      .find(c => c.trim().startsWith('admin_token='))
+      ?.split('=')[1];
 
     if (!token) {
-      return NextResponse.json({ authenticated: false });
+      return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
+    const decoded = verify(token, process.env.JWT_SECRET || "fallback-secret");
     
+    if (!decoded) {
+      return NextResponse.json({ authenticated: false }, { status: 401 });
+    }
 
-    verify(token, process.env.JWT_SECRET || "fallback-secret");
     return NextResponse.json({ authenticated: true });
   } catch (error) {
-    return NextResponse.json({ authenticated: false });
+    console.error("Auth check error:", error);
+    return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 }

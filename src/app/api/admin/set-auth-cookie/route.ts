@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const { token } = await req.json();
-    console.log(`set-auth-cookie route token: ${token}`);
 
     const response = NextResponse.json({ success: true });
     response.cookies.set({
@@ -14,11 +12,15 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24, // 24 hours
+      path: "/", // Important: Set cookie path to root
     });
-    console.log(`set-auth-cookie route response: ${response}`);
-    console.log(`set-auth-cookie route response cookies: ${response.cookies}`);
+
     return response;
   } catch (error) {
-    return NextResponse.json({ success: false }, { status: 500 });
+    console.error("Set auth cookie error:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to set authentication cookie" },
+      { status: 500 }
+    );
   }
 }

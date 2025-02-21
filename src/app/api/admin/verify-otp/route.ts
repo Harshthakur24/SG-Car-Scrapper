@@ -15,7 +15,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Find the latest unused OTP for this email
     const otpRecord = await prisma.adminOTP.findFirst({
       where: {
         email,
@@ -37,25 +36,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // Mark OTP as used
     await prisma.adminOTP.update({
       where: { id: otpRecord.id },
       data: { isUsed: true },
     });
 
-    // Generate JWT token
     const token = sign(
       { email, role: "admin" },
       process.env.JWT_SECRET || "fallback-secret",
       { expiresIn: "24h" }
     );
 
-    console.log(`verify-otp route token: ${token}`)
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       token,
     });
+
+    return response;
   } catch (error: any) {
     console.error("Verify OTP error:", error?.message || error);
     return NextResponse.json(

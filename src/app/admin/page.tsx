@@ -168,27 +168,32 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    const authStatus = sessionStorage.getItem("adminAuthenticated");
-    setIsAuthenticated(authStatus === "true");
-  }, []);
-
-  useEffect(() => {
     const checkAuth = async () => {
       setIsAuthenticating(true);
       try {
         const response = await fetch("/api/admin/auth/check", {
           method: "GET",
-          credentials: "include", 
+          credentials: "include",
         });
+
+        if (!response.ok) {
+          throw new Error("Authentication check failed");
+        }
+
         const data = await response.json();
-        console.log('data on admin page:', data)
         if (!data.authenticated) {
-          router.push("/admin/verify");
+          sessionStorage.removeItem("adminAuthenticated");
+          router.replace("/admin/verify");
           return;
         }
+
         setIsAuthenticated(true);
+        sessionStorage.setItem("adminAuthenticated", "true");
+        fetchUsers();
       } catch (error) {
-        router.push("/admin/verify");
+        console.error("Auth check error:", error);
+        sessionStorage.removeItem("adminAuthenticated");
+        router.replace("/admin/verify");
       } finally {
         setIsAuthenticating(false);
       }
@@ -196,6 +201,7 @@ export default function AdminPage() {
 
     checkAuth();
   }, [router]);
+
 
   if (isAuthenticating) {
     return <LoadingScreen />;

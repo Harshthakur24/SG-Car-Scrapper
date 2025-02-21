@@ -19,6 +19,7 @@ export default function OTPVerification() {
       const response = await fetch("/api/admin/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email }),
       });
 
@@ -46,32 +47,41 @@ export default function OTPVerification() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/admin/verify-otp", {
+      // Step 1: Verify OTP
+      const verifyResponse = await fetch("/api/admin/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, otp }),
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Verification failed");
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok) {
+        throw new Error(verifyData.error || "Verification failed");
       }
 
-      await fetch("/api/admin/set-auth-cookie", {
+      // Step 2: Set auth cookie
+      const cookieResponse = await fetch("/api/admin/set-auth-cookie", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: data.token }),
+        credentials: "include",
+        body: JSON.stringify({ token: verifyData.token }),
       });
-      console.log("Admin token on OTP verification:", data.token);
 
+      if (!cookieResponse.ok) {
+        throw new Error("Failed to set authentication");
+      }
+
+      // Step 3: Set session storage and redirect
+      sessionStorage.setItem("adminAuthenticated", "true");
       toast.success("Welcome Admin!", { duration: 1500 });
+      
       setTimeout(() => {
-        router.push("/admin");
+        router.replace("/admin");
       }, 1500);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Verification failed"
-      );
+      toast.error(error instanceof Error ? error.message : "Verification failed");
+      sessionStorage.removeItem("adminAuthenticated");
     } finally {
       setLoading(false);
     }
