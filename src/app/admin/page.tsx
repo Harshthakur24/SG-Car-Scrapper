@@ -172,27 +172,27 @@ export default function AdminPage() {
     setIsAuthenticated(authStatus === "true");
   }, []);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      setIsAuthenticating(true);
-      try {
-        const response = await fetch("/api/admin/auth/check");
-        const data = await response.json();
-        console.log('data on admin page:', data)
-        if (!data.authenticated) {
-          router.push("/admin/verify");
-          return;
-        }
-        setIsAuthenticated(true);
-      } catch (error) {
-        router.push("/admin/verify");
-      } finally {
-        setIsAuthenticating(false);
-      }
-    };
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     setIsAuthenticating(true);
+  //     try {
+  //       const response = await fetch("/api/admin/auth/check");
+  //       const data = await response.json();
+  //       console.log('data on admin page:', data)
+  //       if (!data.authenticated) {
+  //         router.push("/admin/verify");
+  //         return;
+  //       }
+  //       setIsAuthenticated(true);
+  //     } catch (error) {
+  //       router.push("/admin/verify");
+  //     } finally {
+  //       setIsAuthenticating(false);
+  //     }
+  //   };
 
-    checkAuth();
-  }, [router]);
+  //   checkAuth();
+  // }, [router]);
 
   if (isAuthenticating) {
     return <LoadingScreen />;

@@ -10,11 +10,12 @@ export async function GET(request: Request) {
       .find((c) => c.trim().startsWith("admin_token="))
       ?.split("=")[1];
 
+
     if (!token) {
       return NextResponse.json({ authenticated: false });
     }
 
-    console.log(`auth/check route token: ${token}`);
+    
 
     verify(token, process.env.JWT_SECRET || "fallback-secret");
     return NextResponse.json({ authenticated: true });
