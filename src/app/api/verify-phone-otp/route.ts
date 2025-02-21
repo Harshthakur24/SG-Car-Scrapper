@@ -3,27 +3,35 @@ import { prisma } from "../../../lib/prisma";
 import { uploadToCloudinary } from "../../../lib/cloudinary";
 import axios from "axios";
 
+async function retryRequest<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  let attempt = 0;
+  while (attempt < retries) {
+    try {
+      return await fn();
+    } catch (error) {
+      attempt++;
+      console.error(`[ERROR] Attempt ${attempt} failed:`, error);
+      if (attempt >= retries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay)); // Delay before retrying
+    }
+  }
+  throw new Error("Failed after multiple retries");
+}
+
 export async function POST(request: Request) {
   const startTime = new Date();
-  console.log(
-    `[DEBUG] ${startTime.toISOString()}: Received verify-phone-otp request`
-  );
+  console.log(`[DEBUG] ${startTime.toISOString()}: Received verify-phone-otp request`);
+
   try {
     const payload = await request.json();
     console.log(`[DEBUG] Request payload: ${JSON.stringify(payload)}`);
+
     const { email, otp, tempId, formData, token } = payload;
     if (!email || !otp || !tempId || !formData || !token) {
-      console.error(
-        `[ERROR] Missing required fields: email, otp, tempId, formData or token.`
-      );
-      return NextResponse.json(
-        { success: false, error: "Missing required fields" },
-        { status: 400 }
-      );
+      console.error(`[ERROR] Missing required fields: email, otp, tempId, formData or token.`);
+      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
-    console.log(
-      `[DEBUG] Request contains email: ${email}, otp: ${otp}, tempId: ${tempId}`
-    );
+
     const otpRecord = await prisma.oTPVerification.findFirst({
       where: {
         email,
@@ -33,22 +41,12 @@ export async function POST(request: Request) {
         phoneVerified: false,
       },
     });
+
     if (!otpRecord) {
-      console.error(
-        `[ERROR] No OTP record found or record expired for email: ${email}, tempId: ${tempId}`
-      );
-      return NextResponse.json(
-        { success: false, error: "Invalid or expired verification data" },
-        { status: 400 }
-      );
+      console.error(`[ERROR] No OTP record found or record expired for email: ${email}, tempId: ${tempId}`);
+      return NextResponse.json({ success: false, error: "Invalid or expired verification data" }, { status: 400 });
     }
-    console.log(
-      `[DEBUG] Retrieved OTP record: ${JSON.stringify({
-        id: otpRecord.id,
-        phoneOTP: otpRecord.phoneOTP,
-        expiresAt: otpRecord.expiresAt,
-      })}`
-    );
+
     const aadhaarVerifyOptions = {
       method: "POST",
       url: "https://api.sandbox.co.in/kyc/aadhaar/okyc/otp/verify",
@@ -65,53 +63,25 @@ export async function POST(request: Request) {
         otp: String(otp),
       },
     };
-    console.log(
-      `[DEBUG] Aadhaar verify options: ${JSON.stringify(
-        {
-          url: aadhaarVerifyOptions.url,
-          headers: {
-            accept: aadhaarVerifyOptions.headers.accept,
-            authorization: "***",
-            "x-api-key": "***",
-            "x-api-version": aadhaarVerifyOptions.headers["x-api-version"],
-            "content-type": aadhaarVerifyOptions.headers["content-type"],
-          },
-          data: aadhaarVerifyOptions.data,
-        },
-        null,
-        2
-      )}`
-    );
-    console.log(
-      `[DEBUG] Attempting to verify OTP at ${aadhaarVerifyOptions.url}...`
-    );
-    const verifyResponse = await axios.request(aadhaarVerifyOptions);
-    console.log(`[DEBUG] Received response. Status: ${verifyResponse.status}`);
-    console.log(
-      `[DEBUG] Response headers: ${JSON.stringify(verifyResponse.headers)}`
-    );
-    console.log(
-      `[DEBUG] Response data: ${JSON.stringify(verifyResponse.data)}`
-    );
-    if (verifyResponse.status !== 200) {
-      console.error(
-        `[ERROR] OTP verification failed with non-200 status: ${verifyResponse.status}`
-      );
-      throw new Error("OTP verification failed");
-    }
-    const updateResult = await prisma.oTPVerification.update({
+
+    console.log(`[DEBUG] Attempting OTP verification...`);
+
+    const verifyResponse = await retryRequest(() => axios.request(aadhaarVerifyOptions), 3, 2000);
+    console.log(`[DEBUG] OTP verification successful. Status: ${verifyResponse.status}`);
+
+    await prisma.oTPVerification.update({
       where: { id: otpRecord.id },
       data: { phoneVerified: true },
     });
-    console.log(
-      `[DEBUG] Updated OTP record to phoneVerified: true (record id: ${updateResult.id})`
-    );
+
+    console.log(`[DEBUG] OTP record updated: phoneVerified = true`);
+
     const uploadResults = await Promise.all(
       Object.entries(formData.files || {}).map(async ([key, value]) => {
         if (!value) return null;
         try {
           if (typeof value === "string" && value.includes("base64")) {
-            return await uploadToCloudinary(value);
+            return await retryRequest(() => uploadToCloudinary(value), 3, 2000);
           }
           return null;
         } catch (error) {
@@ -120,6 +90,7 @@ export async function POST(request: Request) {
         }
       })
     );
+
     const user = await prisma.user.create({
       data: {
         name: formData.name,
@@ -142,38 +113,20 @@ export async function POST(request: Request) {
         paymentDone: false,
       },
     });
+
+    console.log(`[DEBUG] User created with ID: ${user.id}`);
+
     const endTime = new Date();
-    console.log(
-      `[DEBUG] Process completed in ${
-        endTime.getTime() - startTime.getTime()
-      } ms`
-    );
+    console.log(`[DEBUG] Process completed in ${endTime.getTime() - startTime.getTime()} ms`);
+
     return NextResponse.json({
       success: true,
       userId: user.id,
       message: "Phone verified and application submitted successfully",
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    console.error(`[ERROR] Exception in verify-phone-otp: `, error);
-    if (error.response) {
-      console.error(
-        `[ERROR] Axios error response status: ${error.response.status}`
-      );
-      console.error(
-        `[ERROR] Axios error response headers: ${JSON.stringify(
-          error.response.headers
-        )}`
-      );
-      console.error(
-        `[ERROR] Axios error response data: ${JSON.stringify(
-          error.response.data
-        )}`
-      );
-    } else {
-      console.error(`[ERROR] ${error.message}`);
-    }
+    console.error(`[ERROR] Exception in verify-phone-otp:`, error);
     return NextResponse.json(
       {
         success: false,
