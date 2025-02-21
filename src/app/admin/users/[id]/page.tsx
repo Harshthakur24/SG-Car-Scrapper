@@ -111,12 +111,20 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, isPaymentDone, userNam
 }
 
 export default function UserDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params)
+    const [id, setId] = useState<string | null>(null);
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
     const [updating, setUpdating] = useState(false)
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
     const router = useRouter()
+
+    useEffect(() => {
+        const fetchId = async () => {
+            const resolvedParams = await params;
+            setId(resolvedParams.id);
+        };
+        fetchId();
+    }, [params]);
 
     useEffect(() => {
         const fetchUser = async () => {
