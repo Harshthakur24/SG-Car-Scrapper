@@ -116,35 +116,55 @@ export default function FormPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-
+  
     // Create loading toast at the start
     const loadingToast = toast.loading("Checking vehicle status...");
-
-    // Check if vehicle number is already present and payment is done
-    const formData = new FormData(e.currentTarget);
-    const vehicleNumber = formData.get("vehicleNumber") as string;
-
+  
     try {
-      const vehicleCheckResponse = await fetch(
-        "/api/check-vehicle-and-payment",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ vehicleNumber }),
+      // Clear any existing data first to prevent storage conflicts
+      Object.keys(localStorage)
+        .filter(key => key.startsWith('file_') || key === 'pendingBasicData')
+        .forEach(key => localStorage.removeItem(key));
+  
+      // Check if vehicle number is already present and payment is done
+      const formData = new FormData(e.currentTarget);
+      const vehicleNumber = formData.get("vehicleNumber") as string;
+  
+      // Add retry logic for the first API call
+      let vehicleCheckResponse;
+      let retryCount = 0;
+      const maxRetries = 2;
+  
+      while (retryCount <= maxRetries) {
+        try {
+          vehicleCheckResponse = await fetch("/api/check-vehicle-and-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ vehicleNumber }),
+          });
+  
+          if (vehicleCheckResponse.ok) {
+            break;
+          }
+        } catch (error) {
+          console.error(`Attempt ${retryCount + 1} failed:`, error);
         }
-      );
-
+  
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        }
+      }
+  
+      if (!vehicleCheckResponse || !vehicleCheckResponse.ok) {
+        throw new Error("Failed to check vehicle status. Please try again.");
+      }
+  
       const vehicleData = await vehicleCheckResponse.json();
-
+  
       // Dismiss the loading toast
       toast.dismiss(loadingToast);
-
-      if (!vehicleCheckResponse.ok) {
-        throw new Error(
-          vehicleData.error || "Failed to check vehicle and payment status"
-        );
-      }
-
+  
       if (vehicleData.vehicleExists) {
         toast.error("Registration already exists for this vehicle number", {
           duration: 4000,
@@ -157,33 +177,27 @@ export default function FormPage() {
         });
         return;
       }
-
+  
       if (vehicleData.vehicleExists && !vehicleData.paymentDone) {
-        toast.error(
-          "Payment has already been processed for this vehicle number",
-          {
-            duration: 4000,
-            icon: "💰",
-            style: {
-              background: "#fee2e2",
-              color: "#991b1b",
-              padding: "16px",
-            },
-          }
-        );
+        toast.error("Payment has already been processed for this vehicle number", {
+          duration: 4000,
+          icon: "💰",
+          style: {
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "16px",
+          },
+        });
         return;
       }
-
+  
       // Proceed with form validation and submission if checks pass
       if (!validateForm()) {
         return;
       }
-
+  
       const formJson = Object.fromEntries(formData.entries());
-
-      // Log to verify vehicle number is included
-      console.log("Form data:", formJson);
-
+      
       // Store basic data
       const basicData = {
         ...formJson,
@@ -191,9 +205,14 @@ export default function FormPage() {
         isHypothecated: isHypothecationCleared,
         vahanRegistrationLink: vahanLink,
       };
-
-      localStorage.setItem("pendingBasicData", JSON.stringify(basicData));
-
+  
+      try {
+        localStorage.setItem("pendingBasicData", JSON.stringify(basicData));
+      } catch (error) {
+        console.error("Storage error:", error);
+        throw new Error("Failed to store form data. Please check your browser settings.");
+      }
+  
       // Process files one by one with better error handling
       const processedFiles: { [key: string]: string } = {};
       for (const [key, file] of Object.entries(files)) {
@@ -203,16 +222,12 @@ export default function FormPage() {
             processedFiles[key] = compressedData;
           } catch (error) {
             console.error(`Error processing ${key}:`, error);
-            throw new Error(
-              `Failed to process ${file.name}. ${
-                error instanceof Error ? error.message : "Please try again."
-              }`
-            );
+            throw new Error(`Failed to process ${file.name}. Please try again.`);
           }
         }
       }
-
-      // Store files in chunks
+  
+      // Store files in chunks with error handling
       const chunkSize = 500000; // 500KB chunks
       for (const [key, value] of Object.entries(processedFiles)) {
         try {
@@ -228,45 +243,53 @@ export default function FormPage() {
           Object.keys(localStorage)
             .filter((k) => k.startsWith("file_"))
             .forEach((k) => localStorage.removeItem(k));
-          throw new Error(
-            "Failed to store files. Please try with smaller files or fewer files."
-          );
+          throw new Error("Failed to store files. Please try with smaller files.");
         }
       }
-
-      // 4. Generate OTP
-      toast.dismiss(loadingToast);
-      const otpToast = toast.loading("Sending verification code...");
-
-      const response = await fetch("/api/generate-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formJson.email,
-          phoneNumber: formJson.phoneNumber,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to send verification code");
+  
+      // Generate OTP with retry logic
+      let otpResponse;
+      retryCount = 0;
+  
+      while (retryCount <= maxRetries) {
+        try {
+          otpResponse = await fetch("/api/generate-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: formJson.email,
+              phoneNumber: formJson.phoneNumber,
+            }),
+          });
+  
+          if (otpResponse.ok) {
+            break;
+          }
+        } catch (error) {
+          console.error(`OTP attempt ${retryCount + 1} failed:`, error);
+        }
+  
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-
-      // 5. Success
-      toast.dismiss(otpToast);
+  
+      if (!otpResponse || !otpResponse.ok) {
+        throw new Error("Failed to send verification code. Please try again.");
+      }
+  
+      const data = await otpResponse.json();
+      
+      // Success
       toast.success("Verification code sent!");
       router.replace(
-        `/verify?email=${encodeURIComponent(
-          formJson.email as string
-        )}&phoneNumber=${encodeURIComponent(
-          formJson.phoneNumber as string
-        )}&tempId=${data.tempId}`
+        `/verify?email=${encodeURIComponent(formJson.email as string)}&phoneNumber=${encodeURIComponent(formJson.phoneNumber as string)}&tempId=${data.tempId}`
       );
+  
     } catch (error) {
       toast.dismiss(loadingToast);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to process submission"
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to process submission");
       console.error("Submission error:", error);
     } finally {
       setIsSubmitting(false);
