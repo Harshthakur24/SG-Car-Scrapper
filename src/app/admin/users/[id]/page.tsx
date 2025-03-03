@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState } from 'react'
 import { User } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
@@ -8,7 +8,6 @@ import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import toast from 'react-hot-toast'
 import { Toaster } from 'react-hot-toast'
 import { UserDocumentsPDF } from '@/components/UserDocumentsPDF'
-
 
 const ArrowLeftIcon = () => (
     <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" role="presentation">
@@ -28,10 +27,16 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, isPaymentDone, userNam
     const [paymentOwner, setPaymentOwner] = useState('');
     const [paymentDetails, setPaymentDetails] = useState('');
 
+    // Reset form values when dialog opens/closes
+    useEffect(() => {
+        if (isOpen) {
+            setPaymentOwner('');
+            setPaymentDetails('');
+        }
+    }, [isOpen]);
+
     const handleSubmit = () => {
         onConfirm({ paymentOwner, paymentDetails });
-        setPaymentOwner('');
-        setPaymentDetails('');
     };
 
     if (!isOpen) return null;
@@ -63,6 +68,7 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, isPaymentDone, userNam
                                                 onChange={(e) => setPaymentOwner(e.target.value)}
                                                 className="mt-1 text-black block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                                                 placeholder="Enter payment owner name"
+                                                required
                                             />
                                         </div>
                                         <div>
@@ -75,6 +81,7 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, isPaymentDone, userNam
                                                 rows={3}
                                                 className="mt-1 text-black block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                                                 placeholder="Enter payment details"
+                                                required
                                             />
                                         </div>
                                     </>
@@ -118,74 +125,97 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
     const router = useRouter()
 
+    // Extract ID from params as soon as they're available
     useEffect(() => {
         const fetchId = async () => {
-            const resolvedParams = await params;
-            setId(resolvedParams.id);
+            try {
+                const resolvedParams = await params;
+                setId(resolvedParams.id);
+            } catch (error) {
+                console.error('Error resolving params:', error);
+                setLoading(false);
+            }
         };
         fetchId();
     }, [params]);
 
+    // Fetch user data whenever ID changes
     useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const response = await fetch(`/api/admin/users/${id}`)
-                const data = await response.json()
-                setUser(data)
-            } catch (error) {
-                console.error('Error fetching user:', error)
-            } finally {
-                setLoading(false)
-            }
-        }
+        if (!id) return;
+        fetchUser();
+    }, [id]);
 
-        fetchUser()
-    }, [id])
-
+    // Separate fetchUser function to be reused
     const fetchUser = async () => {
-        if (!id) return; // Ensure id is available before fetching
-        setLoading(true); // Optionally set loading state
+        if (!id) return;
+        setLoading(true);
         try {
             const response = await fetch(`/api/admin/users/${id}`);
-            if (!response.ok) throw new Error('Failed to fetch user data');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch user data: ${response.status}`);
+            }
             const data = await response.json();
-            setUser(data); // Update the user state with the fetched data
+            if (!data) {
+                throw new Error('No user data returned');
+            }
+            setUser(data);
         } catch (error) {
             console.error('Error fetching user:', error);
+            toast.error('Failed to load user data');
         } finally {
-            setLoading(false); // Reset loading state
+            setLoading(false);
         }
     };
 
-    const handlePaymentToggle = async () => {
-        setIsConfirmationOpen(true)
+    const handlePaymentToggle = () => {
+        setIsConfirmationOpen(true);
     }
 
-    const handleConfirmPaymentToggle = async (paymentData: { paymentOwner?: string, paymentDetails?: string }) => {
+    const handleConfirmPaymentToggle = async (paymentData: { paymentOwner: string, paymentDetails: string }) => {
         setIsConfirmationOpen(false);
         setUpdating(true);
+        
         try {
+            // Ensure we have the current user state
+            if (!user || !id) {
+                throw new Error('User data is missing');
+            }
+            
+            // Prepare the update payload
+            const updatePayload: {
+                paymentDone: boolean;
+                paymentOwner?: string;
+                paymentDetails?: string;
+            } = {
+                paymentDone: !user.paymentDone,
+            };
+            
+            // Only include payment details when marking as paid
+            if (!user.paymentDone) {
+                updatePayload.paymentOwner = paymentData.paymentOwner;
+                updatePayload.paymentDetails = paymentData.paymentDetails;
+            }
+            
             const response = await fetch(`/api/admin/users/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    paymentDone: !user?.paymentDone,
-                    paymentOwner: paymentData.paymentOwner,
-                    paymentDetails: paymentData.paymentDetails
-                }),
+                body: JSON.stringify(updatePayload),
             });
     
-            if (!response.ok) throw new Error('Failed to update payment status');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(`Failed to update payment status: ${errorData?.message || response.status}`);
+            }
     
-            // Refetch user data after updating
+            // Refetch user data to ensure we have the latest state
             await fetchUser();
     
             toast.success(
-                `Payment ${!user?.paymentDone ? 'marked' : 'unmarked'} as done`,
+                `Payment ${!user.paymentDone ? 'marked' : 'unmarked'} as done`,
                 {
-                    icon: !user?.paymentDone ? '✅' : '❌',
+                    icon: !user.paymentDone ? '✅' : '❌',
                     duration: 5000,
                 }
             );
@@ -197,6 +227,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
         }
     };
 
+    // Loading state
     if (loading) {
         return (
             <div className="min-h-screen bg-white flex items-center justify-center">
@@ -205,6 +236,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
         )
     }
 
+    // Error state - user not found
     if (!user) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -228,8 +260,8 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                 isOpen={isConfirmationOpen}
                 onClose={() => setIsConfirmationOpen(false)}
                 onConfirm={handleConfirmPaymentToggle}
-                isPaymentDone={user?.paymentDone || false}
-                userName={user?.name || ''}
+                isPaymentDone={user.paymentDone || false}
+                userName={user.name || ''}
             />
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -245,7 +277,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                         <span className="sm:hidden">Back</span>
                     </button>
 
-                    <div className="flex flex-row sm:flex-row sm:items-center sm:justify-end space-x-4 space-y-3 sm:space-y-0 sm:space-x-4 self-end">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-4 self-end">
                         <button
                             onClick={handlePaymentToggle}
                             disabled={updating}
@@ -254,7 +286,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                 font-semibold text-white shadow-lg text-sm sm:text-base
                                 transition-all duration-300 transform hover:scale-105 hover:shadow-xl
                                 flex items-center justify-center group w-fit
-                                ${user?.paymentDone
+                                ${user.paymentDone
                                     ? 'bg-gradient-to-r from-red-500 to-red-600'
                                     : 'bg-gradient-to-r from-green-500 to-green-600'
                                 }
@@ -264,7 +296,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                             <span className="absolute inset-0 w-full h-full bg-white/10 group-hover:scale-105 transition-transform duration-300"></span>
                             {updating ? (
                                 <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                            ) : user?.paymentDone ? (
+                            ) : user.paymentDone ? (
                                 <>
                                     <XCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                                     <span className="hidden sm:inline">Unmark Payment Done</span>
@@ -281,12 +313,12 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
 
                         <span className={`px-4 py-2 sm:px-6 sm:py-3 rounded-full text-sm sm:text-base 
                             font-semibold text-center w-fit
-                            ${user?.paymentDone
+                            ${user.paymentDone
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
                             }`}
                         >
-                            {user?.paymentDone ? 'Payment Done' : 'Payment Pending'}
+                            {user.paymentDone ? 'Payment Done' : 'Payment Pending'}
                         </span>
                     </div>
                 </div>
@@ -305,8 +337,8 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                         </span>
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
-                                        <p className="text-sm text-gray-500">{user.email}</p>
+                                        <h2 className="text-xl font-bold text-gray-900">{user.name || 'No Name'}</h2>
+                                        <p className="text-sm text-gray-500">{user.email || 'No Email'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -328,7 +360,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                     icon="📅"
                                 />
 
-                                {/* New Payment Information Items */}
+                                {/* Payment Information Items - only show if payment is done */}
                                 {user.paymentDone && (
                                     <>
                                         <InfoItem
@@ -354,7 +386,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                             </div>
                         </div>
 
-                        {/* PDF Download Card - Now as a separate card */}
+                        {/* PDF Download Card */}
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             <div className="p-6">
                                 <div className="text-center">
@@ -380,7 +412,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                         Get all submitted documents in a single PDF file
                                     </p>
                                     <div className="flex justify-center">
-                                        <UserDocumentsPDF user={user} />
+                                        {user && <UserDocumentsPDF user={user} />}
                                     </div>
                                 </div>
                             </div>
@@ -420,12 +452,12 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <StatusCard
                                         title="RC Status"
-                                        status={user.isRcLost}
+                                        status={Boolean(user.isRcLost)}
                                         label={user.isRcLost ? "RC Lost" : "RC Available"}
                                     />
-                                    <StatusCardforHypothecation
+                                    <StatusCardHypothecation
                                         title="Hypothecation Status"
-                                        status={(user.hypothecationClearanceDoc) ? true : false}
+                                        status={Boolean(user.hypothecationClearanceDoc)}
                                         label={user.hypothecationClearanceDoc ? "Hypothecated" : "Not Hypothecated"}
                                     />
                                 </div>
@@ -444,10 +476,10 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
     )
 }
 
-// New helper components
+// Helper components
 interface InfoItemProps {
     label: string;
-    value: string | number | null;
+    value: string | number | null | undefined;
     icon: string;
     className?: string;
 }
@@ -466,7 +498,7 @@ function InfoItem({ label, value, icon, className = "" }: InfoItemProps) {
 
 interface DocumentPreviewProps {
     label: string;
-    url: string;
+    url: string | null | undefined;
     type: 'identity' | 'certificate' | 'financial' | 'legal';
 }
 
@@ -487,10 +519,12 @@ function EnhancedDocumentPreview({ label, url, type }: DocumentPreviewProps) {
         }
     };
 
-    const getDocumentUrl = (url: string | null) => {
+    const getDocumentUrl = (url: string | null | undefined): string | null => {
         if (!url) return null;
         if (url.startsWith('http')) return url;
-        if (url.includes('res.cloudinary.com')) return `https://${url}`;
+        if (url.startsWith('res.cloudinary.com') || url.includes('res.cloudinary.com')) {
+            return url.startsWith('https://') ? url : `https://${url}`;
+        }
         return `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/raw/upload/${url}`;
     };
 
@@ -543,7 +577,8 @@ function StatusCard({ title, status, label }: StatusCardProps) {
         </div>
     );
 }
-function StatusCardforHypothecation({ title, status, label }: StatusCardProps) {
+
+function StatusCardHypothecation({ title, status, label }: StatusCardProps) {
     return (
         <div className={`p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-md
             ${status

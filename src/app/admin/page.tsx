@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { User } from "@prisma/client";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
@@ -105,6 +105,8 @@ export default function AdminPage() {
   const filterRef = useRef<HTMLDivElement>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -119,22 +121,60 @@ export default function AdminPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+    
     try {
-      const response = await fetch("/api/admin/users");
+      // Add cache-busting query parameter to avoid browser caching
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/admin/users?t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.status}`);
+      }
+      
       const data = await response.json();
       setUsers(Array.isArray(data) ? data : []);
+      setLastUpdated(new Date());
     } catch (error) {
-      toast.error("Failed to fetch users");
-      setUsers([]);
+      console.error("Failed to fetch users:", error);
+      if (showLoading) {
+        toast.error("Failed to fetch users");
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
-  };
-
-  useEffect(() => {
-    fetchUsers();
   }, []);
+
+  // Set up polling for data updates
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Initial fetch
+      fetchUsers();
+      
+      // Set up polling every 5 seconds
+      pollingIntervalRef.current = setInterval(() => {
+        fetchUsers(false); // Don't show loading state for background updates
+      }, 5000);
+    }
+    
+    return () => {
+      // Clear interval when component unmounts
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [isAuthenticated, fetchUsers]);
 
   const filteredUsers = users.filter(
     (user) =>
@@ -189,7 +229,6 @@ export default function AdminPage() {
 
         setIsAuthenticated(true);
         sessionStorage.setItem("adminAuthenticated", "true");
-        fetchUsers();
       } catch (error) {
         console.error("Auth check error:", error);
         sessionStorage.removeItem("adminAuthenticated");
@@ -201,7 +240,6 @@ export default function AdminPage() {
 
     checkAuth();
   }, [router]);
-
 
   if (isAuthenticating) {
     return <LoadingScreen />;
@@ -219,17 +257,22 @@ export default function AdminPage() {
           <div className="px-3 sm:px-6 py-4 sm:py-6 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 sm:px-6 py-4">
               {/* Title and Loading State */}
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 w-full sm:w-auto">
-                User Submissions
-                {loading && (
-                  <div className="inline-flex items-center ml-3">
-                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
-                    <span className="ml-2 text-sm text-gray-500 font-normal">
-                      Refreshing...
-                    </span>
-                  </div>
-                )}
-              </h1>
+              <div className="w-full sm:w-auto">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  User Submissions
+                  {loading && (
+                    <div className="inline-flex items-center ml-3">
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                      <span className="ml-2 text-sm text-gray-500 font-normal">
+                        Refreshing...
+                      </span>
+                    </div>
+                  )}
+                </h1>
+                <div className="text-xs text-gray-500 mt-1">
+                  Last updated: {format(lastUpdated, "MMM d, yyyy h:mm:ss a")}
+                </div>
+              </div>
 
               {/* Search and Controls Container */}
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -251,11 +294,9 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2 self-end sm:self-auto">
                   {/* Refresh Button */}
                   <button
-                    onClick={() => {
-                      setLoading(true);
-                      fetchUsers();
-                    }}
+                    onClick={() => fetchUsers(true)}
                     disabled={loading}
+                    title="Refresh data now"
                     className={`p-2 rounded-lg border border-gray-200 hover:bg-gray-50 
                                         transition-all duration-200 bg-white shadow-sm
                                         ${loading ? "animate-spin" : ""}`}
