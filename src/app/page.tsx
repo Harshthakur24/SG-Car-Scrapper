@@ -852,7 +852,7 @@ export default function FormPage() {
                 </h3>
                 <div className="flex flex-col sm:flex-row gap-4 items-center">
                   <a
-                    href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/login/login.xhtml"
+                    href="https://vscrap.parivahan.gov.in/vehiclescrap/vahan/welcome.xhtml"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 rounded-full text-blue-600 font-medium transition-all duration-300 transform hover:scale-[1.06]"
